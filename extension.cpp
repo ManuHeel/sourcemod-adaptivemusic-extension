@@ -39,6 +39,19 @@
 AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
+    smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
+}
+
+void AdaptiveMusicExt::SDK_OnUnload() {
+    smutils->LogMessage(myself, "Adaptive Music Extension - SDK Unloaded");
+}
+
+bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
+    smutils->LogMessage(myself, "Adaptive Music Extension - MetaMod Loaded");
+}
+
+bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
+    smutils->LogMessage(myself, "Adaptive Music Extension - MetaMod Unloaded");
 }
 
 SMEXT_LINK(&g_AdaptiveMusicExt);

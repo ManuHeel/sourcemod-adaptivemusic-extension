@@ -60,7 +60,7 @@ public:
 	/**
 	 * @brief This is called right before the extension is unloaded.
 	 */
-	//virtual void SDK_OnUnload();
+	virtual void SDK_OnUnload();
 
 	/**
 	 * @brief This is called once all known extensions have been loaded.
@@ -91,7 +91,7 @@ public:
 	 * @param late			Whether or not Metamod considers this a late load.
 	 * @return				True to succeed, false to fail.
 	 */
-	//virtual bool SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late);
+	virtual bool SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late);
 
 	/**
 	 * @brief Called when Metamod is detaching, after the extension version is called.
@@ -101,7 +101,7 @@ public:
 	 * @param maxlen		Maximum size of error buffer.
 	 * @return				True to succeed, false to fail.
 	 */
-	//virtual bool SDK_OnMetamodUnload(char *error, size_t maxlen);
+	virtual bool SDK_OnMetamodUnload(char *error, size_t maxlen);
 
 	/**
 	 * @brief Called when Metamod's pause state is changing.
