@@ -42,7 +42,6 @@
  */
 
 AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
-ISmmAPI *g_ismm;
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
@@ -62,6 +61,24 @@ bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxl
 bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
     return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Helper method to sanitize the name of an FMOD Bank, adding ".bank" if it's not already present
+// Input: The FMOD Bank name to sanitize
+// Output: The sanitized Bank name (same as the initial if it was already ending with ".bank")
+//-----------------------------------------------------------------------------
+const char *SanitizeBankName(const char *bankName) {
+    const char *bankExtension = ".bank";
+    size_t bankNameLength = strlen(bankName);
+    size_t bankExtensionLength = strlen(bankExtension);
+    if (bankNameLength >= bankExtensionLength && strcmp(bankName + bankNameLength - bankExtensionLength, bankExtension) == 0) {
+        return bankName;
+    }
+    char * buffer = new char[512];
+    strcat(buffer, bankName);
+    strcat(buffer,bankExtension);
+    return (buffer);
 }
 
 /**
@@ -107,10 +124,12 @@ int AdaptiveMusicExt::StopFMODEngine() {
 // Input: The FMOD Bank name to locate
 // Output: The FMOD Bank's full path from the file system
 //-----------------------------------------------------------------------------
-const char *AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
+const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     const char *sanitizedBankName = SanitizeBankName(bankName);
     char *bankPath = new char[512];
-    Q_snprintf(bankPath, 512, "%s/sound/fmod/banks/%s", g_SMAPI->GetBaseDir(), sanitizedBankName);
+    strcat(bankPath, g_SMAPI->GetBaseDir());
+    strcat(bankPath, "/sound/fmod/banks/");
+    strcat(bankPath, sanitizedBankName);
     // convert backwards slashes to forward slashes
     for (int i = 0; i < 512; i++) {
         if (bankPath[i] == '\\')
@@ -119,6 +138,7 @@ const char *AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     return bankPath;
 }
 
+/*
 //-----------------------------------------------------------------------------
 // Purpose: Load an FMOD Bank
 // Input: The name of the FMOD Bank to load
@@ -139,6 +159,7 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
                            FMOD_ErrorString(result));
             return (-1);
         }
+        V_strcat
         const char *bankStringsName = Concatenate(bankName, ".strings");
         result = fmodStudioSystem->loadBankFile(GetFMODBankPath(bankStringsName),
                                                 FMOD_STUDIO_LOAD_BANK_NORMAL,
@@ -259,5 +280,6 @@ int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
     knownFMODPausedState = pausedState;
     return (0);
 }
+*/
 
 SMEXT_LINK(&g_AdaptiveMusicExt);

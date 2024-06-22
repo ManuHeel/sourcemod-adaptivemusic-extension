@@ -135,7 +135,7 @@ public:
 	int StopFMODEngine();
 
     const char *GetFMODBankPath(const char *bankName);
-
+/*
     int LoadFMODBank(const char *bankName);
 
     int StartFMODEvent(const char *eventPath);
@@ -145,8 +145,7 @@ public:
     int SetFMODGlobalParameter(const char *parameterName, float value);
 
     int SetFMODPausedState(bool pausedState);
-
-
+*/
 #endif
 };
 
