@@ -39,6 +39,10 @@
 
 #include "smsdk_ext.h"
 
+// FMOD Includes
+#include "fmod.hpp"
+#include "fmod_studio.hpp"
+#include "fmod_errors.h"
 
 /**
  * @brief Adaptive Music implementation of the SDK Extension.
@@ -113,6 +117,36 @@ public:
 	 * @return				True to succeed, false to fail.
 	 */
 	//virtual bool SDK_OnMetamodPauseChange(bool paused, char *error, size_t maxlen);
+
+public:
+
+    // FMOD global variables
+    FMOD::Studio::System *fmodStudioSystem;
+    FMOD::Studio::Bank *loadedFMODStudioBank;
+    char *loadedFMODStudioBankName;
+    FMOD::Studio::Bank *loadedFMODStudioStringsBank;
+    FMOD::Studio::EventDescription *startedFMODStudioEventDescription;
+    char *startedFMODStudioEventPath;
+    FMOD::Studio::EventInstance *createdFMODStudioEventInstance;
+    bool knownFMODPausedState;
+
+	int StartFMODEngine();
+	
+	int StopFMODEngine();
+
+    const char *GetFMODBankPath(const char *bankName);
+
+    int LoadFMODBank(const char *bankName);
+
+    int StartFMODEvent(const char *eventPath);
+
+    int StopFMODEvent(const char *eventPath);
+
+    int SetFMODGlobalParameter(const char *parameterName, float value);
+
+    int SetFMODPausedState(bool pausedState);
+
+
 #endif
 };
 

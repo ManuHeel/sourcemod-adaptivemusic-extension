@@ -19,10 +19,10 @@ MMSOURCE19 = ../../../mmsource-1.9
 ### EDIT BELOW FOR OTHER PROJECTS ###
 #####################################
 
-PROJECT = adaptivemusic_ext
+PROJECT = adaptivemusic
 
 #Uncomment for Metamod: Source enabled extension
-#USEMETA = true
+USEMETA = true
 
 OBJECTS = smsdk_ext.cpp extension.cpp
 

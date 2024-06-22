@@ -291,6 +291,9 @@ class ExtensionConfig(object):
       os.path.join(self.sm_root, 'sourcepawn', 'include'),
       os.path.join(self.sm_root, 'public', 'amtl', 'amtl'),
       os.path.join(self.sm_root, 'public', 'amtl'),
+      os.path.join(self.sm_root, 'public', 'fmod', 'core'),
+      os.path.join(self.sm_root, 'public', 'fmod', 'studio'),
+      os.path.join(self.sm_root, 'public', 'fmod', 'fsbank'),
     ]
     return compiler
 
@@ -397,6 +400,13 @@ class ExtensionConfig(object):
       dynamic_libs = ['libtier0.dylib', 'libvstdlib.dylib']
     elif builder.target_platform == 'windows':
       libs = ['tier0', 'tier1', 'vstdlib', 'mathlib']
+      # FMOD Linking
+      libs.append('fmod_vc')
+      libs.append('fmodL_vc')
+      libs.append('fmodstudio_vc')
+      libs.append('fmodstudioL_vc')
+      libs.append('fsbank_vc')
+      # END FMOD Linking
       if sdk.name in ['swarm', 'blade', 'insurgency', 'doi', 'csgo']:
         libs.append('interfaces')
       for lib in libs:

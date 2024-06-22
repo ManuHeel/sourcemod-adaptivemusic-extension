@@ -31,15 +31,23 @@
 
 #include "extension.h"
 
+// FMOD Includes
+#include "fmod.hpp"
+#include "fmod_studio.hpp"
+#include "fmod_errors.h"
+
 /**
  * @file extension.cpp
  * @brief Implement extension code here.
  */
 
 AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
+ISmmAPI *g_ismm;
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
+    StartFMODEngine();
+    return true;
 }
 
 void AdaptiveMusicExt::SDK_OnUnload() {
@@ -47,11 +55,209 @@ void AdaptiveMusicExt::SDK_OnUnload() {
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
-    smutils->LogMessage(myself, "Adaptive Music Extension - MetaMod Loaded");
+    META_CONPRINTF("Adaptive Music Extension - MetaMod Loaded \n");
+    return true;
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
-    smutils->LogMessage(myself, "Adaptive Music Extension - MetaMod Unloaded");
+    META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
+    return true;
+}
+
+/**
+ * @brief Start the FMOD Studio System and initialize it
+ * @return The error code (or 0 if no error was encountered)
+ */
+int AdaptiveMusicExt::StartFMODEngine() {
+    FMOD_RESULT result;
+    result = FMOD::Studio::System::create(&fmodStudioSystem);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not be created (%d): %s\n", result,
+                       FMOD_ErrorString(result));
+        return (result);
+    }
+    result = fmodStudioSystem->initialize(512, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, nullptr);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not initialize (%d): %s\n", result,
+                       FMOD_ErrorString(result));
+        return (result);
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine successfully started\n");
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Stop the FMOD Studio System
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::StopFMODEngine() {
+    FMOD_RESULT result;
+    result = fmodStudioSystem->release();
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not be released (%d): %s\n", result,
+                       FMOD_ErrorString(result));
+        return (result);
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine successfully stopped\n");
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Get the path of a Bank file in the /sound/fmod/banks folder from the GamePath
+// Input: The FMOD Bank name to locate
+// Output: The FMOD Bank's full path from the file system
+//-----------------------------------------------------------------------------
+const char *AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
+    const char *sanitizedBankName = SanitizeBankName(bankName);
+    char *bankPath = new char[512];
+    Q_snprintf(bankPath, 512, "%s/sound/fmod/banks/%s", g_SMAPI->GetBaseDir(), sanitizedBankName);
+    // convert backwards slashes to forward slashes
+    for (int i = 0; i < 512; i++) {
+        if (bankPath[i] == '\\')
+            bankPath[i] = '/';
+    }
+    return bankPath;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Load an FMOD Bank
+// Input: The name of the FMOD Bank to load
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
+    if (loadedFMODStudioBankName != nullptr && (strcmp(bankName, loadedFMODStudioBankName) == 0)) {
+        // Bank is already loaded
+        META_CONPRINTF("AdaptiveMusic Plugin - FMOD bank requested for loading but already loaded: %s\n", bankName);
+    } else {
+        // Load the requested bank
+        const char *bankPath = GetFMODBankPath(bankName);
+        FMOD_RESULT result;
+        result = fmodStudioSystem->loadBankFile(bankPath, FMOD_STUDIO_LOAD_BANK_NORMAL,
+                                                &loadedFMODStudioBank);
+        if (result != FMOD_OK) {
+            META_CONPRINTF("AdaptiveMusic Plugin - Could not load FMOD bank: %s. Error (%d): %s\n", bankName, result,
+                           FMOD_ErrorString(result));
+            return (-1);
+        }
+        const char *bankStringsName = Concatenate(bankName, ".strings");
+        result = fmodStudioSystem->loadBankFile(GetFMODBankPath(bankStringsName),
+                                                FMOD_STUDIO_LOAD_BANK_NORMAL,
+                                                &loadedFMODStudioStringsBank);
+        if (result != FMOD_OK) {
+            META_CONPRINTF("AdaptiveMusic Plugin - Could not load FMOD bank: %s. Error (%d): %\n", bankStringsName,
+                           result,
+                           FMOD_ErrorString(result));
+            return (-1);
+        }
+        META_CONPRINTF("AdaptiveMusic Plugin - Bank successfully loaded: %s\n", bankName);
+        delete[] loadedFMODStudioBankName;
+        loadedFMODStudioBankName = new char[strlen(bankName) + 1];
+        strcpy(loadedFMODStudioBankName, bankName);
+    }
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Start an FMOD Event
+// Input: The name of the FMOD Event to start
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
+    if (startedFMODStudioEventPath != nullptr && (Q_strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
+        // Event is already loaded
+        META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
+    } else {
+        // Event is new
+        if (startedFMODStudioEventPath != nullptr && (Q_strcmp(startedFMODStudioEventPath, "") != 0)) {
+            // Stop the currently playing event
+            StopFMODEvent(startedFMODStudioEventPath);
+        }
+        const char *fullEventPath = Concatenate("event:/", eventPath);
+        FMOD_RESULT result;
+        result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
+        result = startedFMODStudioEventDescription->createInstance(&createdFMODStudioEventInstance);
+        result = createdFMODStudioEventInstance->start();
+        fmodStudioSystem->update();
+        if (result != FMOD_OK) {
+            META_CONPRINTF("AdaptiveMusic Plugin - Could not start Event (%s). Error: (%d) %s\n", eventPath, result,
+                           FMOD_ErrorString(result));
+            return (-1);
+        }
+        META_CONPRINTF("AdaptiveMusic Plugin - Event successfully started (%s)\n", eventPath);
+        delete[] startedFMODStudioEventPath;
+        startedFMODStudioEventPath = new char[strlen(eventPath) + 1];
+        strcpy(startedFMODStudioEventPath, eventPath);
+    }
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Stop an FMOD Event
+// Input: The name of the FMOD Event to stop
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
+    const char *fullEventPath = Concatenate("event:/", eventPath);
+    FMOD_RESULT result;
+    result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
+    result = startedFMODStudioEventDescription->releaseAllInstances();
+    fmodStudioSystem->update();
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not stop Event (%s). Error: (%d) %s\n", eventPath, result,
+                       FMOD_ErrorString(result));
+        return (-1);
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - Event successfully stopped (%s)\n", eventPath);
+    delete[] startedFMODStudioEventPath;
+    startedFMODStudioEventPath = new char[strlen("") + 1];
+    strcpy(startedFMODStudioEventPath, "");
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Set the value for a global FMOD Parameter
+// Input:
+// - parameterName: The name of the FMOD Parameter to set
+// - value: The value to set the FMOD Parameter to
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float value) {
+    FMOD_RESULT result;
+    result = fmodStudioSystem->setParameterByName(parameterName, value);
+    fmodStudioSystem->update();
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not set Global Parameter value (%s) (%f). Error: (%d) %s\n",
+                       parameterName, value,
+                       result, FMOD_ErrorString(result));
+        return (-1);
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - Global Parameter %s set to %f\n", parameterName, value);
+    return (0);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Pause/Unpause the playback of the engine
+// Input:
+// - pausedState: true if the desired state of the playback is "paused", false otherwise
+// Output: The error code (or 0 if no error was encountered)
+//-----------------------------------------------------------------------------
+int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
+    META_CONPRINTF("AdaptiveMusic Plugin - Setting the FMOD master bus paused state to %d\n", pausedState);
+    FMOD::Studio::Bus *bus;
+    FMOD_RESULT result;
+    result = fmodStudioSystem->getBus("bus:/", &bus);
+    if (result != FMOD_OK) {
+        Msg("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return (-1);
+    }
+    result = bus->setPaused(pausedState);
+    fmodStudioSystem->update();
+    if (result != FMOD_OK) {
+        Msg("AdaptiveMusic Plugin - Could not pause the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return (-1);
+    }
+    knownFMODPausedState = pausedState;
+    return (0);
 }
 
 SMEXT_LINK(&g_AdaptiveMusicExt);
