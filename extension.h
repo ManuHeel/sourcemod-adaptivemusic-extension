@@ -138,9 +138,8 @@ public:
 
     int LoadFMODBank(const char *bankName);
 	
-/*
     int StartFMODEvent(const char *eventPath);
-
+/*
     int StopFMODEvent(const char *eventPath);
 
     int SetFMODGlobalParameter(const char *parameterName, float value);
