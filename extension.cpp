@@ -43,10 +43,37 @@
 
 AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
 
+// BEGIN NATIVES
+
+/**
+ * SourceMod native function for AdaptiveMusicExt::LoadFMODBank
+ */
+cell_t LoadFMODBank(IPluginContext *pContext, const cell_t *params)
+{
+	char *bankName;
+	pContext->LocalToString(params[1], &bankName);
+	return g_AdaptiveMusicExt.LoadFMODBank(bankName);
+}
+
+// END NATIVES
+
+/**
+ * Defining the native functions of the extensions
+ */
+const sp_nativeinfo_t MyNatives[] = 
+{
+	{"LoadFMODBank",	LoadFMODBank},
+	{NULL,			NULL},
+};
+
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
     StartFMODEngine();
     return true;
+}
+
+void AdaptiveMusicExt::SDK_OnAllLoaded() {
+    sharesys->AddNatives(myself, MyNatives);
 }
 
 void AdaptiveMusicExt::SDK_OnUnload() {
@@ -138,7 +165,6 @@ const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     return bankPath;
 }
 
-/*
 //-----------------------------------------------------------------------------
 // Purpose: Load an FMOD Bank
 // Input: The name of the FMOD Bank to load
@@ -159,8 +185,9 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
                            FMOD_ErrorString(result));
             return (-1);
         }
-        V_strcat
-        const char *bankStringsName = Concatenate(bankName, ".strings");
+        char *bankStringsName = new char[1024];
+        strcat(bankStringsName, bankPath);
+        strcat(bankStringsName, ".strings");
         result = fmodStudioSystem->loadBankFile(GetFMODBankPath(bankStringsName),
                                                 FMOD_STUDIO_LOAD_BANK_NORMAL,
                                                 &loadedFMODStudioStringsBank);
@@ -178,6 +205,7 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
     return (0);
 }
 
+/*
 //-----------------------------------------------------------------------------
 // Purpose: Start an FMOD Event
 // Input: The name of the FMOD Event to start
