@@ -102,10 +102,10 @@ const char *SanitizeBankName(const char *bankName) {
     if (bankNameLength >= bankExtensionLength && strcmp(bankName + bankNameLength - bankExtensionLength, bankExtension) == 0) {
         return bankName;
     }
-    char * buffer = new char[512];
-    strcat(buffer, bankName);
-    strcat(buffer,bankExtension);
-    return (buffer);
+    char* sanitizedBankName = new char[bankNameLength + bankExtensionLength + 1];
+    strcpy(sanitizedBankName, bankName);
+    strcat(sanitizedBankName, bankExtension);
+    return (sanitizedBankName);
 }
 
 /**
@@ -153,12 +153,17 @@ int AdaptiveMusicExt::StopFMODEngine() {
 //-----------------------------------------------------------------------------
 const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     const char *sanitizedBankName = SanitizeBankName(bankName);
-    char *bankPath = new char[512];
-    strcat(bankPath, g_SMAPI->GetBaseDir());
-    strcat(bankPath, "/sound/fmod/banks/");
+    const char *baseDir = g_SMAPI->GetBaseDir();
+    const char *banksSubPath = "/sound/fmod/banks/";
+    size_t sanitizedBankNameLength = strlen(sanitizedBankName);
+    size_t baseDirLength = strlen(baseDir);
+    size_t banksSubPathLength = strlen(banksSubPath);
+    char* bankPath = new char[sanitizedBankNameLength + baseDirLength + banksSubPathLength + 1];
+    strcpy(bankPath, baseDir);
+    strcat(bankPath, banksSubPath);
     strcat(bankPath, sanitizedBankName);
     // convert backwards slashes to forward slashes
-    for (int i = 0; i < 512; i++) {
+    for (int i = 0; i < strlen(bankPath) ; i++) {
         if (bankPath[i] == '\\')
             bankPath[i] = '/';
     }
@@ -185,10 +190,14 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
                            FMOD_ErrorString(result));
             return (-1);
         }
-        char *bankStringsName = new char[1024];
-        strcat(bankStringsName, bankPath);
-        strcat(bankStringsName, ".strings");
-        result = fmodStudioSystem->loadBankFile(GetFMODBankPath(bankStringsName),
+        const char *bankStringsSuffix = ".strings";
+        size_t bankNameLength = strlen(bankName);
+        size_t bankStringsSuffixLength = strlen(bankStringsSuffix);
+        char* bankStringsName = new char[bankNameLength + bankStringsSuffixLength + 1];
+        strcpy(bankStringsName, bankName);
+        strcat(bankStringsName, bankStringsSuffix);
+        const char *bankStringsPath = GetFMODBankPath(bankStringsName);
+        result = fmodStudioSystem->loadBankFile(bankStringsPath,
                                                 FMOD_STUDIO_LOAD_BANK_NORMAL,
                                                 &loadedFMODStudioStringsBank);
         if (result != FMOD_OK) {
