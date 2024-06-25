@@ -21,3 +21,12 @@ native int StartFMODEvent(const char[] eventPath);
  * @return	The error code or 0 if no error occured
  */
 native int StopFMODEvent(const char[] eventPath);
+
+/**
+ * Set an FMOD global parameter value
+ *
+ * @param parameterName	The path of the global parameter to set
+ * @param value The value to set the global parameter to
+ * @return	The error code or 0 if no error occured
+ */
+native int SetFMODGlobalParameter(const char[] parameterName, float value);

@@ -51,6 +51,7 @@ AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main
 cell_t LoadFMODBank(IPluginContext *pContext, const cell_t *params)
 {
 	char *bankName;
+
 	pContext->LocalToString(params[1], &bankName);
 	return g_AdaptiveMusicExt.LoadFMODBank(bankName);
 }
@@ -75,6 +76,17 @@ cell_t StopFMODEvent(IPluginContext *pContext, const cell_t *params)
 	return g_AdaptiveMusicExt.StopFMODEvent(eventPath);
 }
 
+/**
+ * SourceMod native function for AdaptiveMusicExt::SetFMODGlobalParameter
+ */
+cell_t SetFMODGlobalParameter(IPluginContext *pContext, const cell_t *params)
+{
+	char *parameterName;
+	pContext->LocalToString(params[1], &parameterName);
+    float value = sp_ctof(params[2]);
+	return g_AdaptiveMusicExt.SetFMODGlobalParameter(parameterName, value);
+}
+
 // END NATIVES
 
 /**
@@ -82,10 +94,11 @@ cell_t StopFMODEvent(IPluginContext *pContext, const cell_t *params)
  */
 const sp_nativeinfo_t MyNatives[] = 
 {
-	{"LoadFMODBank",	LoadFMODBank},
-	{"StartFMODEvent",	StartFMODEvent},
-	{"StopFMODEvent",	StopFMODEvent},
-	{NULL,			NULL},
+	{"LoadFMODBank", LoadFMODBank},
+	{"StartFMODEvent", StartFMODEvent},
+	{"StopFMODEvent", StopFMODEvent},
+	{"SetFMODGlobalParameter", SetFMODGlobalParameter},
+	{NULL, NULL},
 };
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
@@ -112,11 +125,11 @@ bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
     return true;
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Helper method to sanitize the name of an FMOD Bank, adding ".bank" if it's not already present
-// Input: The FMOD Bank name to sanitize
-// Output: The sanitized Bank name (same as the initial if it was already ending with ".bank")
-//-----------------------------------------------------------------------------
+/**
+ * Helper method to sanitize the name of an FMOD Bank, adding ".bank" if it's not already present
+ * @param bankName The FMOD Bank name to sanitize
+ * @return The sanitized Bank name (same as the initial if it was already ending with ".bank")
+ */
 const char *SanitizeBankName(const char *bankName) {
     const char *bankExtension = ".bank";
     size_t bankNameLength = strlen(bankName);
@@ -131,7 +144,7 @@ const char *SanitizeBankName(const char *bankName) {
 }
 
 /**
- * @brief Start the FMOD Studio System and initialize it
+ * Start the FMOD Studio System and initialize it
  * @return The error code (or 0 if no error was encountered)
  */
 int AdaptiveMusicExt::StartFMODEngine() {
@@ -152,10 +165,10 @@ int AdaptiveMusicExt::StartFMODEngine() {
     return (0);
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Stop the FMOD Studio System
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+/**
+ * Stop the FMOD Studio System
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::StopFMODEngine() {
     FMOD_RESULT result;
     result = fmodStudioSystem->release();
@@ -168,11 +181,11 @@ int AdaptiveMusicExt::StopFMODEngine() {
     return (0);
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Get the path of a Bank file in the /sound/fmod/banks folder from the GamePath
-// Input: The FMOD Bank name to locate
-// Output: The FMOD Bank's full path from the file system
-//-----------------------------------------------------------------------------
+/**
+ * Get the path of a Bank file in the sound/fmod/banks folder from the GamePath
+ * @param bankName The FMOD Bank name to locate
+ * @return The FMOD Bank's full path from the file system
+ */
 const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     const char *sanitizedBankName = SanitizeBankName(bankName);
     const char *baseDir = g_SMAPI->GetBaseDir();
@@ -192,11 +205,11 @@ const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
     return bankPath;
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Load an FMOD Bank
-// Input: The name of the FMOD Bank to load
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+/**
+ * Load an FMOD Bank
+ * @param bankName The name of the FMOD Bank to load
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
     if (loadedFMODStudioBankName != nullptr && (strcmp(bankName, loadedFMODStudioBankName) == 0)) {
         // Bank is already loaded
@@ -236,11 +249,11 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
     return (0);
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Start an FMOD Event
-// Input: The name of the FMOD Event to start
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+/**
+ * Start an FMOD Event
+ * @param eventPath The name of the FMOD Event to start
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
     if (startedFMODStudioEventPath != nullptr && (strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
         // Event is already loaded
@@ -249,7 +262,7 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         // Event is new
         if (startedFMODStudioEventPath != nullptr && (strcmp(startedFMODStudioEventPath, "") != 0)) {
             // Stop the currently playing event
-            // TODO: StopFMODEvent(startedFMODStudioEventPath);
+            StopFMODEvent(startedFMODStudioEventPath);
         }
         const char *eventPathPrefix = "event:/";
         size_t eventPathLength = strlen(eventPath);
@@ -275,11 +288,11 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
     return (0);
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Stop an FMOD Event
-// Input: The name of the FMOD Event to stop
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+/**
+ * Stop an FMOD Event
+ * @param eventPath The name of the FMOD Event to stop
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
     const char *eventPathPrefix = "event:/";
     size_t eventPathLength = strlen(eventPath);
@@ -302,14 +315,13 @@ int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
     strcpy(startedFMODStudioEventPath, "");
     return (0);
 }
-/*
-//-----------------------------------------------------------------------------
-// Purpose: Set the value for a global FMOD Parameter
-// Input:
-// - parameterName: The name of the FMOD Parameter to set
-// - value: The value to set the FMOD Parameter to
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+
+/**
+ * Set the value for a global FMOD Parameter
+ * @param parameterName The name of the FMOD Parameter to set
+ * @param value The value to set the FMOD Parameter to
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float value) {
     FMOD_RESULT result;
     result = fmodStudioSystem->setParameterByName(parameterName, value);
@@ -324,30 +336,28 @@ int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float va
     return (0);
 }
 
-//-----------------------------------------------------------------------------
-// Purpose: Pause/Unpause the playback of the engine
-// Input:
-// - pausedState: true if the desired state of the playback is "paused", false otherwise
-// Output: The error code (or 0 if no error was encountered)
-//-----------------------------------------------------------------------------
+/**
+ * Pause/Unpause the playback of the engine
+ * @param pausedState true if the desired state of the playback is "paused", false otherwise
+ * @return The error code (or 0 if no error was encountered)
+ */
 int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
     META_CONPRINTF("AdaptiveMusic Plugin - Setting the FMOD master bus paused state to %d\n", pausedState);
     FMOD::Studio::Bus *bus;
     FMOD_RESULT result;
     result = fmodStudioSystem->getBus("bus:/", &bus);
     if (result != FMOD_OK) {
-        Msg("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
         return (-1);
     }
     result = bus->setPaused(pausedState);
     fmodStudioSystem->update();
     if (result != FMOD_OK) {
-        Msg("AdaptiveMusic Plugin - Could not pause the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not pause the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
         return (-1);
     }
     knownFMODPausedState = pausedState;
     return (0);
 }
-*/
 
 SMEXT_LINK(&g_AdaptiveMusicExt);
