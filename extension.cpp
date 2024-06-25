@@ -43,7 +43,9 @@
 
 AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
 
-// BEGIN NATIVES
+// ----------------
+// NATIVE FUNCTIONS
+// ----------------
 
 /**
  * SourceMod native function for AdaptiveMusicExt::LoadFMODBank
@@ -87,7 +89,14 @@ cell_t SetFMODGlobalParameter(IPluginContext *pContext, const cell_t *params)
 	return g_AdaptiveMusicExt.SetFMODGlobalParameter(parameterName, value);
 }
 
-// END NATIVES
+/**
+ * SourceMod native function for AdaptiveMusicExt::SetFMODPausedState
+ */
+cell_t SetFMODPausedState(IPluginContext *pContext, const cell_t *params)
+{
+    int pausedState = params[1];
+	return g_AdaptiveMusicExt.SetFMODPausedState(pausedState);
+}
 
 /**
  * Defining the native functions of the extensions
@@ -98,8 +107,13 @@ const sp_nativeinfo_t MyNatives[] =
 	{"StartFMODEvent", StartFMODEvent},
 	{"StopFMODEvent", StopFMODEvent},
 	{"SetFMODGlobalParameter", SetFMODGlobalParameter},
+	{"SetFMODPausedState", SetFMODPausedState},
 	{NULL, NULL},
 };
+
+// -----------------------
+// GENERAL EXTENSION SETUP
+// -----------------------
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
@@ -124,6 +138,10 @@ bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
     return true;
 }
+
+// --------------
+// FMOD FUNCTIONS
+// --------------
 
 /**
  * Helper method to sanitize the name of an FMOD Bank, adding ".bank" if it's not already present

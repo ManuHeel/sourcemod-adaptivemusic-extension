@@ -1,3 +1,8 @@
+#if defined _adaptivemusic_included
+ #endinput
+#endif
+#define _adaptivemusic_included
+
 /**
  * Load an FMOD bank
  *
@@ -30,3 +35,11 @@ native int StopFMODEvent(const char[] eventPath);
  * @return	The error code or 0 if no error occured
  */
 native int SetFMODGlobalParameter(const char[] parameterName, float value);
+
+/**
+ * Set if the FMOD engine should be paused or not
+ *
+ * @param pausedState 1 if the engine should be paused, 0 if not
+ * @return	The error code or 0 if no error occured
+ */
+native int SetFMODPausedState(int pausedState);

@@ -119,6 +119,9 @@ public:
 	//virtual bool SDK_OnMetamodPauseChange(bool paused, char *error, size_t maxlen);
 
 public:
+	void Hook_GameFrame(bool simulating);
+
+public:
 
     // FMOD global variables
     FMOD::Studio::System *fmodStudioSystem;
