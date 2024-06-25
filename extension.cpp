@@ -65,6 +65,16 @@ cell_t StartFMODEvent(IPluginContext *pContext, const cell_t *params)
 	return g_AdaptiveMusicExt.StartFMODEvent(eventPath);
 }
 
+/**
+ * SourceMod native function for AdaptiveMusicExt::StopFMODEvent
+ */
+cell_t StopFMODEvent(IPluginContext *pContext, const cell_t *params)
+{
+	char *eventPath;
+	pContext->LocalToString(params[1], &eventPath);
+	return g_AdaptiveMusicExt.StopFMODEvent(eventPath);
+}
+
 // END NATIVES
 
 /**
@@ -74,6 +84,7 @@ const sp_nativeinfo_t MyNatives[] =
 {
 	{"LoadFMODBank",	LoadFMODBank},
 	{"StartFMODEvent",	StartFMODEvent},
+	{"StopFMODEvent",	StopFMODEvent},
 	{NULL,			NULL},
 };
 
@@ -263,14 +274,19 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
     }
     return (0);
 }
-/*
+
 //-----------------------------------------------------------------------------
 // Purpose: Stop an FMOD Event
 // Input: The name of the FMOD Event to stop
 // Output: The error code (or 0 if no error was encountered)
 //-----------------------------------------------------------------------------
 int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
-    const char *fullEventPath = Concatenate("event:/", eventPath);
+    const char *eventPathPrefix = "event:/";
+    size_t eventPathLength = strlen(eventPath);
+    size_t eventPathPrefixLength = strlen(eventPathPrefix);
+    char* fullEventPath = new char[eventPathLength + eventPathPrefixLength + 1];
+    strcpy(fullEventPath, eventPathPrefix);
+    strcat(fullEventPath, eventPath);
     FMOD_RESULT result;
     result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
     result = startedFMODStudioEventDescription->releaseAllInstances();
@@ -286,7 +302,7 @@ int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
     strcpy(startedFMODStudioEventPath, "");
     return (0);
 }
-
+/*
 //-----------------------------------------------------------------------------
 // Purpose: Set the value for a global FMOD Parameter
 // Input:
