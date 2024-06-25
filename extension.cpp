@@ -73,6 +73,7 @@ cell_t StartFMODEvent(IPluginContext *pContext, const cell_t *params)
 const sp_nativeinfo_t MyNatives[] = 
 {
 	{"LoadFMODBank",	LoadFMODBank},
+	{"StartFMODEvent",	StartFMODEvent},
 	{NULL,			NULL},
 };
 
@@ -230,12 +231,12 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
 // Output: The error code (or 0 if no error was encountered)
 //-----------------------------------------------------------------------------
 int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
-    if (startedFMODStudioEventPath != nullptr && (Q_strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
+    if (startedFMODStudioEventPath != nullptr && (strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
         // Event is already loaded
         META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
     } else {
         // Event is new
-        if (startedFMODStudioEventPath != nullptr && (Q_strcmp(startedFMODStudioEventPath, "") != 0)) {
+        if (startedFMODStudioEventPath != nullptr && (strcmp(startedFMODStudioEventPath, "") != 0)) {
             // Stop the currently playing event
             // TODO: StopFMODEvent(startedFMODStudioEventPath);
         }
