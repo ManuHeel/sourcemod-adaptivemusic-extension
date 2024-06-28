@@ -36,6 +36,9 @@
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
 
+// Personal includes
+#include "fmod_state.cpp"
+
 /**
  * @file extension.cpp
  * @brief Implement extension code here.
@@ -131,11 +134,13 @@ void AdaptiveMusicExt::SDK_OnUnload() {
 
 bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Loaded \n");
+    AddFMODStateHooks();
     return true;
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
+    RemoveFMODStateHooks();
     return true;
 }
 
