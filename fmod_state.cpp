@@ -1,5 +1,9 @@
 #include "extension.h"
 
+#include <filesystem.h>
+#include <tier1/KeyValues.h>
+#include <iostream>
+
 using namespace SourceHook;
 
 /**
@@ -7,6 +11,17 @@ using namespace SourceHook;
  */
 void SaveMusicState(const char* musicStateSaveName) {
     META_CONPRINTF("AdaptiveMusic Plugin - Saving the Adaptive Music state\n");
+    FileHandle_t fileHandle = g_pFullFileSystem->Open(filePath, "w", "MOD");
+    if (fileHandle == nullptr) {
+        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
+        return;
+    }
+
+    // Write the KeyValues data to the file
+    kv->SaveToFile(g_pFullFileSystem, fileHandle, filePath);
+
+    // Close the file handle
+    g_pFullFileSystem->Close(fileHandle);
     /*
     // Find the adaptive music file
     char szFullName[512];
