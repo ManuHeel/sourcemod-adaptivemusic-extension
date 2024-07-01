@@ -154,7 +154,7 @@ public:
 
     int SetFMODGlobalParameter(const char *parameterName, float value);
 
-	void GetAllFMODParameters();
+	FMOD_STUDIO_PARAMETER_DESCRIPTION *GetAllFMODGlobalParameters();
 
     int SetFMODPausedState(bool pausedState);
 

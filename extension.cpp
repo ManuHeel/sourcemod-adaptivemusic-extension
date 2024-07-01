@@ -383,10 +383,28 @@ int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float va
 }
 
 /**
- * Get all the paremeters registered in the bank
+ * Get all the parameters registered in the bank
  * @return An array of all parameters registered in the bank
  */
-void AdaptiveMusicExt::GetAllFMODParameters(){
+FMOD_STUDIO_PARAMETER_DESCRIPTION *AdaptiveMusicExt::GetAllFMODGlobalParameters(){
+    FMOD_RESULT result; 
+    FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
+    int parameterCount;
+    result = fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+        return nullptr;
+    } else {
+        // Strip the array of the empty cells
+        // Allocate memory for the new array
+        FMOD_STUDIO_PARAMETER_DESCRIPTION* limitedGlobalParameters = new FMOD_STUDIO_PARAMETER_DESCRIPTION[parameterCount];
+        // Copy the elements from globalParameters to newArray
+        for (int i = 0; i < parameterCount; i++) {
+            limitedGlobalParameters[i] = globalParameters[i];
+        }
+        // Return the new array
+        return limitedGlobalParameters;
+    }
 }
 
 /**

@@ -24,26 +24,44 @@ void SaveMusicState(const char* musicStateSaveName) {
     META_CONPRINTF("AdaptiveMusic Plugin - Saving the Adaptive Music state to %s\n", saveFullPath);
     // Write the current state
     // BANK
-    g_AdaptiveMusicExt.filesystem->Write("bank ", (strlen("bank ") + 1), saveFileHandle);
+    g_AdaptiveMusicExt.filesystem->Write("bank ", (strlen("bank ")), saveFileHandle);
     char* bankName = g_AdaptiveMusicExt.loadedFMODStudioBankName;
-    g_AdaptiveMusicExt.filesystem->Write(bankName, (strlen(bankName) + 1), saveFileHandle);  
+    g_AdaptiveMusicExt.filesystem->Write(bankName, (strlen(bankName)), saveFileHandle);  
     g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     // EVENT
-    g_AdaptiveMusicExt.filesystem->Write("event ", (strlen("event ") + 1), saveFileHandle);
+    g_AdaptiveMusicExt.filesystem->Write("event ", (strlen("event ")), saveFileHandle);
     char* eventPath = g_AdaptiveMusicExt.startedFMODStudioEventPath;
-    g_AdaptiveMusicExt.filesystem->Write(eventPath, (strlen(eventPath) + 1), saveFileHandle); 
+    g_AdaptiveMusicExt.filesystem->Write(eventPath, (strlen(eventPath)), saveFileHandle); 
     g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     // TIMESTAMP
     int timelinePosition = g_AdaptiveMusicExt.GetCurrentFMODTimelinePosition();
     if (timelinePosition != -1){
         std::string timelinePositionString = std::to_string(timelinePosition);
         const char* timelinePositionConstChar = timelinePositionString.c_str();
-        g_AdaptiveMusicExt.filesystem->Write("timestamp ", (strlen("timestamp ") + 1), saveFileHandle);
-        g_AdaptiveMusicExt.filesystem->Write(timelinePositionConstChar, (strlen(timelinePositionConstChar) + 1), saveFileHandle); 
+        g_AdaptiveMusicExt.filesystem->Write("timestamp ", (strlen("timestamp ")), saveFileHandle);
+        g_AdaptiveMusicExt.filesystem->Write(timelinePositionConstChar, (strlen(timelinePositionConstChar)), saveFileHandle); 
         g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     }
     // PARAMETERS
-    //const char **parametersList = g_AdaptiveMusicExt.GetAllFMODParameters();
+    FMOD_STUDIO_PARAMETER_DESCRIPTION *globalParameters = g_AdaptiveMusicExt.GetAllFMODGlobalParameters();
+    globalParametersCount = sizeof(globalParameters);
+    if (globalParameters != nullptr) {
+        for (int i = 0; i < sizeof(globalParameters); i++) {
+            // parameter (space)
+            g_AdaptiveMusicExt.filesystem->Write("parameter ", (strlen("parameter ")), saveFileHandle);
+            // parameter_name
+            const char* parameterName = globalParameters[i].name;
+            g_AdaptiveMusicExt.filesystem->Write(parameterName, (strlen(parameterName)), saveFileHandle); 
+            // (space)
+            g_AdaptiveMusicExt.filesystem->Write(" ", (strlen(" ")), saveFileHandle);
+            // parameter_value
+            float parameterValue = globalParameters[i].maximum;
+            std::string parameterValueString = std::to_string(parameterValue);
+            const char* parameterValueConstChar = parameterValueString.c_str();
+            g_AdaptiveMusicExt.filesystem->Write(parameterValueConstChar, (strlen(parameterValueConstChar)), saveFileHandle); 
+            g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+        }
+    }
     // Close the handle
     g_AdaptiveMusicExt.filesystem->Close(saveFileHandle);
 }
