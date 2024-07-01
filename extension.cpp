@@ -30,6 +30,9 @@
  */
 
 #include "extension.h"
+#include <filesystem.h>
+#include <tier1/KeyValues.h>
+#include <stdio.h>
 
 // FMOD Includes
 #include "fmod.hpp"
@@ -43,8 +46,6 @@
  * @file extension.cpp
  * @brief Implement extension code here.
  */
-
-AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
 
 // ----------------
 // NATIVE FUNCTIONS
@@ -134,6 +135,8 @@ void AdaptiveMusicExt::SDK_OnUnload() {
 
 bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Loaded \n");
+    CreateInterfaceFn fileSystemFactory = ismm->GetFileSystemFactory();
+    GET_V_IFACE_CURRENT(GetEngineFactory, filesystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);  
     AddFMODStateHooks();
     return true;
 }
@@ -312,6 +315,26 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
 }
 
 /**
+ * Get the current timeline position of the running event instance
+ * @return The current timeline position of the running event
+ */
+int AdaptiveMusicExt::GetCurrentFMODTimelinePosition() {
+    if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Asking for the current event instance timeline position but no event is running");
+        return -1;
+    }
+    FMOD_RESULT result;
+    int timelinePosition;
+    result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->getTimelinePosition(&timelinePosition);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+        return -1;
+    } else {
+        return timelinePosition;
+    }
+}
+
+/**
  * Stop an FMOD Event
  * @param eventPath The name of the FMOD Event to stop
  * @return The error code (or 0 if no error was encountered)
@@ -357,6 +380,13 @@ int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float va
     }
     META_CONPRINTF("AdaptiveMusic Plugin - Global Parameter %s set to %f\n", parameterName, value);
     return (0);
+}
+
+/**
+ * Get all the paremeters registered in the bank
+ * @return An array of all parameters registered in the bank
+ */
+void AdaptiveMusicExt::GetAllFMODParameters(){
 }
 
 /**

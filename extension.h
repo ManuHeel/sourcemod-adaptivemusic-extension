@@ -38,6 +38,7 @@
  */
 
 #include "smsdk_ext.h"
+#include <filesystem.h>
 
 // FMOD Includes
 #include "fmod.hpp"
@@ -122,6 +123,10 @@ public:
 	void Hook_GameFrame(bool simulating);
 
 public:
+	// Global interfaces
+	IFileSystem *filesystem;
+
+public:
 
     // FMOD global variables
     FMOD::Studio::System *fmodStudioSystem;
@@ -143,13 +148,19 @@ public:
 	
     int StartFMODEvent(const char *eventPath);
 
+	int GetCurrentFMODTimelinePosition();
+
     int StopFMODEvent(const char *eventPath);
 
     int SetFMODGlobalParameter(const char *parameterName, float value);
+
+	void GetAllFMODParameters();
 
     int SetFMODPausedState(bool pausedState);
 
 #endif
 };
+
+AdaptiveMusicExt g_AdaptiveMusicExt; /* Global singleton for extension's main interface */
 
 #endif // _INCLUDE_SOURCEMOD_EXTENSION_PROPER_H_

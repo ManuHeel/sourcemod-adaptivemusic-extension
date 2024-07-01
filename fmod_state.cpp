@@ -1,8 +1,6 @@
 #include "extension.h"
 
 #include <filesystem.h>
-#include <tier1/KeyValues.h>
-#include <iostream>
 
 using namespace SourceHook;
 
@@ -10,39 +8,73 @@ using namespace SourceHook;
  * Save the current state of bank, event and global parameters to a .kv file with the same name as the .sav file
  */
 void SaveMusicState(const char* musicStateSaveName) {
-    META_CONPRINTF("AdaptiveMusic Plugin - Saving the Adaptive Music state\n");
-    FileHandle_t fileHandle = g_pFullFileSystem->Open(filePath, "w", "MOD");
-    if (fileHandle == nullptr) {
-        std::cerr << "Failed to open file for writing: " << filePath << std::endl;
+    // Build the path to the file
+    const char* pathPrefix = "save/";
+    size_t pathPrefixLength = strlen(pathPrefix);
+    size_t saveNameLength = strlen(musicStateSaveName);
+    char* saveFullPath = new char[pathPrefixLength + saveNameLength + 1];
+    strcpy(saveFullPath, pathPrefix);
+    strcat(saveFullPath, musicStateSaveName);
+    // When opening the file and writing to it, it gets completely wiped first, so no need to wipe it beforehand
+    FileHandle_t saveFileHandle = g_AdaptiveMusicExt.filesystem->Open(saveFullPath, "w", "MOD");
+    if (saveFileHandle == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open save file for writing: %s", saveFullPath);
         return;
     }
-
-    // Write the KeyValues data to the file
-    kv->SaveToFile(g_pFullFileSystem, fileHandle, filePath);
-
-    // Close the file handle
-    g_pFullFileSystem->Close(fileHandle);
-    /*
-    // Find the adaptive music file
-    char szFullName[512];
-    sprintf(szFullName, sizeof(szFullName), "maps/%s_adaptivemusic.txt", STRING(gpGlobals->mapname));
-    auto* keyValue = new KeyValues("adaptive_music");
-    if (keyValue->LoadFromFile(filesystem, szFullName, "MOD")) {
-        Msg("FMOD Adaptive Music - Loading adaptive music data from '%s'\n", szFullName);
-        KeyValues* keyValueSubset = keyValue->GetFirstSubKey();
-        while (keyValueSubset) {
-            ParseKeyValue(keyValueSubset);
-            keyValueSubset = keyValueSubset->GetNextKey();
-        }
+    META_CONPRINTF("AdaptiveMusic Plugin - Saving the Adaptive Music state to %s\n", saveFullPath);
+    // Write the current state
+    // BANK
+    g_AdaptiveMusicExt.filesystem->Write("bank ", (strlen("bank ") + 1), saveFileHandle);
+    char* bankName = g_AdaptiveMusicExt.loadedFMODStudioBankName;
+    g_AdaptiveMusicExt.filesystem->Write(bankName, (strlen(bankName) + 1), saveFileHandle);  
+    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+    // EVENT
+    g_AdaptiveMusicExt.filesystem->Write("event ", (strlen("event ") + 1), saveFileHandle);
+    char* eventPath = g_AdaptiveMusicExt.startedFMODStudioEventPath;
+    g_AdaptiveMusicExt.filesystem->Write(eventPath, (strlen(eventPath) + 1), saveFileHandle); 
+    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+    // TIMESTAMP
+    int timelinePosition = g_AdaptiveMusicExt.GetCurrentFMODTimelinePosition();
+    if (timelinePosition != -1){
+        std::string timelinePositionString = std::to_string(timelinePosition);
+        const char* timelinePositionConstChar = timelinePositionString.c_str();
+        g_AdaptiveMusicExt.filesystem->Write("timestamp ", (strlen("timestamp ") + 1), saveFileHandle);
+        g_AdaptiveMusicExt.filesystem->Write(timelinePositionConstChar, (strlen(timelinePositionConstChar) + 1), saveFileHandle); 
+        g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     }
-    */
+    // PARAMETERS
+    //const char **parametersList = g_AdaptiveMusicExt.GetAllFMODParameters();
+    // Close the handle
+    g_AdaptiveMusicExt.filesystem->Close(saveFileHandle);
 }
 
 /**
  * Restore the current state of bank, event and global parameters from a .kv file with the same name as the .sav file
  */
 void RestoreMusicState(const char* musicStateSaveName) {
-    META_CONPRINTF("AdaptiveMusic Plugin - Restoring the Adaptive Music state\n");
+    // Build the path to the file
+    const char* pathPrefix = "save/";
+    size_t pathPrefixLength = strlen(pathPrefix);
+    size_t saveNameLength = strlen(musicStateSaveName);
+    char* saveFullPath = new char[pathPrefixLength + saveNameLength + 1];
+    strcpy(saveFullPath, pathPrefix);
+    strcat(saveFullPath, musicStateSaveName);
+    // When opening the file and writing to it, it gets completely wiped first, so no need to wipe it beforehand
+    FileHandle_t saveFileHandle = g_AdaptiveMusicExt.filesystem->Open(saveFullPath, "r", "MOD");
+    if (saveFileHandle == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open save file for reading: %s", saveFullPath);
+        return;
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - Restoring the Adaptive Music state from %s\n", saveFullPath);
+    // Read and restore the current state
+    // BANK
+
+    // EVENT
+
+    // TIMESTAMP
+
+    // Close the handle
+    g_AdaptiveMusicExt.filesystem->Close(saveFileHandle);
 }
 
 /**
@@ -53,7 +85,7 @@ const char* replaceSavWithMusicState(const char* original) {
     const char* prefix1 = "save\\";
     const char* prefix2 = "save/";
     const char* oldSuffix = ".sav";
-    const char* newSuffix = ".musicstate.kv";
+    const char* newSuffix = ".musicstate.sav";
     // Find the length of the original string and the suffixes
     size_t originalLength = strlen(original);
     size_t prefix1Length = strlen(prefix1);
@@ -99,7 +131,6 @@ SH_DECL_HOOK2_void(IServerGameDLL, PreSaveGameLoaded, SH_NOATTRIB, 0, char const
 
 void Hook_SaveGlobalState(CSaveRestoreData *saveRestoreData)
 {
-    META_CONPRINTF("SAVING GLOBAL STATE\n");
     const char *saveName = engine->GetSaveFileName();
     const char *musicStateSaveName = replaceSavWithMusicState(saveName);
     SaveMusicState(musicStateSaveName);
@@ -108,7 +139,6 @@ void Hook_SaveGlobalState(CSaveRestoreData *saveRestoreData)
 
 void Hook_RestoreGlobalState(CSaveRestoreData *saveRestoreData)
 {
-    META_CONPRINTF("RESTORING GLOBAL STATE\n");
     const char * saveName = engine->GetMostRecentlyLoadedFileName();
     const char *musicStateSaveName = replaceSavWithMusicState(saveName);
     RestoreMusicState(musicStateSaveName);
