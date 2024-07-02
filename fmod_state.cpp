@@ -5,9 +5,58 @@
 using namespace SourceHook;
 
 /**
- * Save the current state of bank, event and global parameters to a .kv file with the same name as the .sav file
+ * Save the current state of bank, event and global parameters to a .musicstate.sav file with the same name as the .sav file
  */
 void SaveMusicState(const char* musicStateSaveName) {
+    // IF WE'RE DOING AN AUTOSAVE: There is some more stuff to do beforehand
+    if (strcmp(musicStateSaveName, "autosave.musicstate.sav") == 0) {
+        // Shift all the possible autosaveXX.musicstate.sav files
+        for (int i = 98; i >= 1; i--) {
+            // Prepare the "XX" numbers on two digits
+            char autosaveIndex[3]; 
+            char buffer[3];
+            itoa(i, buffer, 10);
+            if (i < 10) {
+                autosaveIndex[0] = '0';
+                autosaveIndex[1] = buffer[0];
+                autosaveIndex[2] = '\0';
+            } else {
+                strcpy(autosaveIndex, buffer);
+            }
+            // Prepare the "XX+1" numbers on two digits
+            char autosaveIndexPlusOne[3]; 
+            char bufferPlusOne[3];
+            itoa(i+1, bufferPlusOne, 10);
+            if (i+1 < 10) {
+                autosaveIndexPlusOne[0] = '0';
+                autosaveIndexPlusOne[1] = bufferPlusOne[0];
+                autosaveIndexPlusOne[2] = '\0';
+            } else {
+                strcpy(autosaveIndexPlusOne, bufferPlusOne);
+            }
+            // Build the path to the file
+            const char* pathPrefix = "save/autosave";
+            const char* pathSuffix = ".musicstate.sav";
+            size_t pathPrefixLength = strlen(pathPrefix);
+            size_t pathSuffixLength = strlen(pathSuffix);
+            size_t autosaveIndexLength = strlen(autosaveIndex);
+            char* saveFullPath = new char[pathPrefixLength + autosaveIndexLength + pathSuffixLength + 1];
+            strcpy(saveFullPath, pathPrefix);
+            strcat(saveFullPath, autosaveIndex);
+            strcat(saveFullPath, pathSuffix);
+            // Build the path to the +1 file
+            char* saveFullPathPlusOne = new char[pathPrefixLength + autosaveIndexLength + pathSuffixLength + 1];
+            strcpy(saveFullPathPlusOne, pathPrefix);
+            strcat(saveFullPathPlusOne, autosaveIndexPlusOne);
+            strcat(saveFullPathPlusOne, pathSuffix);
+            if (g_AdaptiveMusicExt.filesystem->FileExists(saveFullPath, "MOD")) {
+                g_AdaptiveMusicExt.filesystem->RenameFile(saveFullPath, saveFullPathPlusOne, "MOD");
+            }
+        }
+        if (g_AdaptiveMusicExt.filesystem->FileExists("save/autosave.musicstate.sav", "MOD")) {
+            g_AdaptiveMusicExt.filesystem->RenameFile("save/autosave.musicstate.sav","save/autosave01.musicstate.sav", "MOD");
+        }
+    }
     // Build the path to the file
     const char* pathPrefix = "save/";
     size_t pathPrefixLength = strlen(pathPrefix);

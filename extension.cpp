@@ -287,8 +287,12 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
         // However, if there's a restored timeline position from a save file, use it as we may be reloading from the same map (autosave, etc)
         if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+            fmodStudioSystem->update();
             createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
             restoredTimelinePosition = 0;
+            createdFMODStudioEventInstance->start();
+            fmodStudioSystem->update();
         }
     } else {
         // Event is new
@@ -305,12 +309,14 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         FMOD_RESULT result;
         result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
         result = startedFMODStudioEventDescription->createInstance(&createdFMODStudioEventInstance);
-        result = createdFMODStudioEventInstance->start();
         // If there's a restored timeline position from a save file, use it
         if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+            fmodStudioSystem->update();
             createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
             restoredTimelinePosition = 0;
         }
+        result = createdFMODStudioEventInstance->start();
         fmodStudioSystem->update();
         if (result != FMOD_OK) {
             META_CONPRINTF("AdaptiveMusic Plugin - Could not start Event (%s). Error: (%d) %s\n", eventPath, result,
