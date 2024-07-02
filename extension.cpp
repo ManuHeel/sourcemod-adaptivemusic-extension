@@ -30,18 +30,22 @@
  */
 
 #include "extension.h"
+#include <filesystem.h>
+#include <tier1/KeyValues.h>
+#include <stdio.h>
 
 // FMOD Includes
 #include "fmod.hpp"
 #include "fmod_studio.hpp"
 #include "fmod_errors.h"
 
+// Personal includes
+#include "fmod_state.cpp"
+
 /**
  * @file extension.cpp
  * @brief Implement extension code here.
  */
-
-AdaptiveMusicExt g_AdaptiveMusicExt;		/**< Global singleton for extension's main interface */
 
 // ----------------
 // NATIVE FUNCTIONS
@@ -118,6 +122,7 @@ const sp_nativeinfo_t MyNatives[] =
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
     StartFMODEngine();
+    restoredTimelinePosition = 0;
     return true;
 }
 
@@ -131,11 +136,15 @@ void AdaptiveMusicExt::SDK_OnUnload() {
 
 bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Loaded \n");
+    CreateInterfaceFn fileSystemFactory = ismm->GetFileSystemFactory();
+    GET_V_IFACE_CURRENT(GetEngineFactory, filesystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);  
+    AddFMODStateHooks();
     return true;
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
     META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
+    RemoveFMODStateHooks();
     return true;
 }
 
@@ -276,6 +285,15 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
     if (startedFMODStudioEventPath != nullptr && (strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
         // Event is already loaded
         META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
+        // However, if there's a restored timeline position from a save file, use it as we may be reloading from the same map (autosave, etc)
+        if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+            fmodStudioSystem->update();
+            createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
+            restoredTimelinePosition = 0;
+            createdFMODStudioEventInstance->start();
+            fmodStudioSystem->update();
+        }
     } else {
         // Event is new
         if (startedFMODStudioEventPath != nullptr && (strcmp(startedFMODStudioEventPath, "") != 0)) {
@@ -291,6 +309,13 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         FMOD_RESULT result;
         result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
         result = startedFMODStudioEventDescription->createInstance(&createdFMODStudioEventInstance);
+        // If there's a restored timeline position from a save file, use it
+        if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
+            fmodStudioSystem->update();
+            createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
+            restoredTimelinePosition = 0;
+        }
         result = createdFMODStudioEventInstance->start();
         fmodStudioSystem->update();
         if (result != FMOD_OK) {
@@ -304,6 +329,44 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         strcpy(startedFMODStudioEventPath, eventPath);
     }
     return (0);
+}
+
+/**
+ * Get the current timeline position of the running event instance
+ * @return The current timeline position of the running event
+ */
+int AdaptiveMusicExt::GetCurrentFMODTimelinePosition() {
+    if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Asking for the current event instance timeline position but no event is running");
+        return -1;
+    }
+    FMOD_RESULT result;
+    int timelinePosition;
+    result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->getTimelinePosition(&timelinePosition);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+        return -1;
+    } else {
+        return timelinePosition;
+    }
+}
+
+/**
+ * Setp the current timeline position of the running event instance
+ */
+void AdaptiveMusicExt::SetCurrentFMODTimelinePosition(int timelinePosition) {
+    /*
+    if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Asking to update the current event instance timeline position but no event is running");
+    }
+    FMOD_RESULT result;
+    result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->setTimelinePosition(timelinePosition);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+    }
+    */
+    // ONLY SET THE VARIABLE
+    restoredTimelinePosition = timelinePosition;
 }
 
 /**
@@ -352,6 +415,31 @@ int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float va
     }
     META_CONPRINTF("AdaptiveMusic Plugin - Global Parameter %s set to %f\n", parameterName, value);
     return (0);
+}
+
+/**
+ * Get all the parameters registered in the bank
+ * @return An array of all parameters registered in the bank
+ */
+FMOD_STUDIO_PARAMETER_DESCRIPTION *AdaptiveMusicExt::GetAllFMODGlobalParameters(){
+    FMOD_RESULT result; 
+    FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
+    int parameterCount;
+    result = fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+        return nullptr;
+    } else {
+        // Strip the array of the empty cells
+        // Allocate memory for the new array
+        FMOD_STUDIO_PARAMETER_DESCRIPTION* limitedGlobalParameters = new FMOD_STUDIO_PARAMETER_DESCRIPTION[parameterCount];
+        // Copy the elements from globalParameters to newArray
+        for (int i = 0; i < parameterCount; i++) {
+            limitedGlobalParameters[i] = globalParameters[i];
+        }
+        // Return the new array
+        return limitedGlobalParameters;
+    }
 }
 
 /**
