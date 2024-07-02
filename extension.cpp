@@ -122,6 +122,7 @@ const sp_nativeinfo_t MyNatives[] =
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
     smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
     StartFMODEngine();
+    restoredTimelinePosition = 0;
     return true;
 }
 
@@ -284,6 +285,11 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
     if (startedFMODStudioEventPath != nullptr && (strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
         // Event is already loaded
         META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
+        // However, if there's a restored timeline position from a save file, use it as we may be reloading from the same map (autosave, etc)
+        if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
+            restoredTimelinePosition = 0;
+        }
     } else {
         // Event is new
         if (startedFMODStudioEventPath != nullptr && (strcmp(startedFMODStudioEventPath, "") != 0)) {
@@ -300,6 +306,11 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
         result = startedFMODStudioEventDescription->createInstance(&createdFMODStudioEventInstance);
         result = createdFMODStudioEventInstance->start();
+        // If there's a restored timeline position from a save file, use it
+        if (restoredTimelinePosition != 0) {
+            createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
+            restoredTimelinePosition = 0;
+        }
         fmodStudioSystem->update();
         if (result != FMOD_OK) {
             META_CONPRINTF("AdaptiveMusic Plugin - Could not start Event (%s). Error: (%d) %s\n", eventPath, result,
@@ -332,6 +343,24 @@ int AdaptiveMusicExt::GetCurrentFMODTimelinePosition() {
     } else {
         return timelinePosition;
     }
+}
+
+/**
+ * Setp the current timeline position of the running event instance
+ */
+void AdaptiveMusicExt::SetCurrentFMODTimelinePosition(int timelinePosition) {
+    /*
+    if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Asking to update the current event instance timeline position but no event is running");
+    }
+    FMOD_RESULT result;
+    result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->setTimelinePosition(timelinePosition);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+    }
+    */
+    // ONLY SET THE VARIABLE
+    restoredTimelinePosition = timelinePosition;
 }
 
 /**

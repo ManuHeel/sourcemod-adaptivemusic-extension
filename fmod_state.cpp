@@ -96,58 +96,48 @@ void RestoreMusicState(const char* musicStateSaveName) {
     }
     META_CONPRINTF("AdaptiveMusic Plugin - Restoring the Adaptive Music state from %s\n", saveFullPath);
     // Read the current state
-    /*
-    // BANK
-    g_AdaptiveMusicExt.filesystem->Write("bank ", (strlen("bank ")), saveFileHandle);
-    char* bankName = g_AdaptiveMusicExt.loadedFMODStudioBankName;
-    g_AdaptiveMusicExt.filesystem->Write(bankName, (strlen(bankName)), saveFileHandle);  
-    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
-    // EVENT
-    g_AdaptiveMusicExt.filesystem->Write("event ", (strlen("event ")), saveFileHandle);
-    char* eventPath = g_AdaptiveMusicExt.startedFMODStudioEventPath;
-    g_AdaptiveMusicExt.filesystem->Write(eventPath, (strlen(eventPath)), saveFileHandle); 
-    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
-    // TIMESTAMP
-    int timelinePosition = g_AdaptiveMusicExt.GetCurrentFMODTimelinePosition();
-    if (timelinePosition != -1){
-        std::string timelinePositionString = std::to_string(timelinePosition);
-        const char* timelinePositionConstChar = timelinePositionString.c_str();
-        g_AdaptiveMusicExt.filesystem->Write("timestamp ", (strlen("timestamp ")), saveFileHandle);
-        g_AdaptiveMusicExt.filesystem->Write(timelinePositionConstChar, (strlen(timelinePositionConstChar)), saveFileHandle); 
-        g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
-    }
-    // PARAMETERS
-    FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
-    int parameterCount;
-    FMOD_RESULT result; 
-    result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
-    if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
-    } else {
-        for (int i = 0; i < parameterCount; i++) {
-            // Get the parameter value
-            float parameterValue;
-            FMOD_RESULT result; 
-            result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterByName(globalParameters[i].name, &parameterValue);
-            if (result != FMOD_OK) {
-                META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter value. Error: (%d) %s\n", result, FMOD_ErrorString(result));
-            } else {
-                // parameter (space)
-                g_AdaptiveMusicExt.filesystem->Write("parameter ", (strlen("parameter ")), saveFileHandle);
-                // parameter_name
-                const char* parameterName = globalParameters[i].name;
-                g_AdaptiveMusicExt.filesystem->Write(parameterName, (strlen(parameterName)), saveFileHandle); 
-                // (space)
-                g_AdaptiveMusicExt.filesystem->Write(" ", (strlen(" ")), saveFileHandle);
-                // parameter_value
-                std::string parameterValueString = std::to_string(parameterValue);
-                const char* parameterValueConstChar = parameterValueString.c_str();
-                g_AdaptiveMusicExt.filesystem->Write(parameterValueConstChar, (strlen(parameterValueConstChar)), saveFileHandle);
-                g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+    char buf[512];
+    g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), saveFileHandle);
+    while (strcmp(buf, "") != 0) {
+        // READ THE LINE AND FILL THE TOKENS
+        char* tokens[3] = {};
+        char* token = strtok(buf, " ");
+        int i = 0;
+        while (token != nullptr) {
+            // Remove backlash-n
+            char* readPtr = token;
+            char* writePtr = token;
+            while (*readPtr != '\0') {
+                if (*readPtr != '\n') {
+                    *writePtr = *readPtr;
+                    writePtr++;
+                }
+                readPtr++;
             }
+            *writePtr = '\0'; // Null-terminate the modified string
+            // Next token
+            tokens[i] = token;
+            token = strtok(nullptr, " ");
+            i++;
         }
+        // BANK
+        if (strcmp(tokens[0], "bank") == 0 && tokens[1] != nullptr) {
+            g_AdaptiveMusicExt.LoadFMODBank(tokens[1]);
+        }
+        // EVENT
+        if (strcmp(tokens[0], "event") == 0 && tokens[1] != nullptr) {
+            //g_AdaptiveMusicExt.StartFMODEvent(tokens[1]); // Don't start the event from the save file, the KeyValues parsing will
+        }
+        // TIMESTAMP
+        if (strcmp(tokens[0], "timestamp") == 0 && tokens[1] != nullptr) {
+            g_AdaptiveMusicExt.SetCurrentFMODTimelinePosition(atoi(tokens[1]));
+        }
+        // PARAMETERS
+        if (strcmp(tokens[0], "parameter") == 0 && tokens[1] != nullptr && tokens[2] != nullptr) {
+            g_AdaptiveMusicExt.SetFMODGlobalParameter(tokens[1], atof(tokens[2]));
+        }
+        g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), saveFileHandle);
     }
-    */
     // Close the handle
     g_AdaptiveMusicExt.filesystem->Close(saveFileHandle);
 }
@@ -199,10 +189,10 @@ const char* replaceSavWithMusicState(const char* original) {
 SH_DECL_HOOK1_void(IServerGameDLL, SaveGlobalState, SH_NOATTRIB, 0, CSaveRestoreData *);
 SH_DECL_HOOK1_void(IServerGameDLL, RestoreGlobalState, SH_NOATTRIB, 0, CSaveRestoreData *);
 // Testing
-SH_DECL_HOOK1_void(IServerGameDLL, PreSave, SH_NOATTRIB, 0, CSaveRestoreData *);
-SH_DECL_HOOK1_void(IServerGameDLL, Save, SH_NOATTRIB, 0, CSaveRestoreData *);
+//SH_DECL_HOOK1_void(IServerGameDLL, PreSave, SH_NOATTRIB, 0, CSaveRestoreData *);
+//SH_DECL_HOOK1_void(IServerGameDLL, Save, SH_NOATTRIB, 0, CSaveRestoreData *);
 SH_DECL_HOOK2_void(IServerGameDLL, Restore, SH_NOATTRIB, 0, CSaveRestoreData *, bool);
-SH_DECL_HOOK2_void(IServerGameDLL, PreSaveGameLoaded, SH_NOATTRIB, 0, char const *, bool);
+//SH_DECL_HOOK2_void(IServerGameDLL, PreSaveGameLoaded, SH_NOATTRIB, 0, char const *, bool);
 
 void Hook_SaveGlobalState(CSaveRestoreData *saveRestoreData)
 {
@@ -220,14 +210,24 @@ void Hook_RestoreGlobalState(CSaveRestoreData *saveRestoreData)
     RETURN_META(MRES_HANDLED);
 }
 
+void Hook_Restore(CSaveRestoreData *saveRestoreData, bool)
+{
+    const char * saveName = engine->GetMostRecentlyLoadedFileName();
+    const char *musicStateSaveName = replaceSavWithMusicState(saveName);
+    RestoreMusicState(musicStateSaveName);
+    RETURN_META(MRES_HANDLED);
+}
+
 void AddFMODStateHooks()
 {
    SH_ADD_HOOK(IServerGameDLL, SaveGlobalState, gamedll, SH_STATIC(Hook_SaveGlobalState), false);
-   SH_ADD_HOOK(IServerGameDLL, RestoreGlobalState, gamedll, SH_STATIC(Hook_RestoreGlobalState), false);
+   SH_ADD_HOOK(IServerGameDLL, RestoreGlobalState, gamedll, SH_STATIC(Hook_RestoreGlobalState), false); // THIS DOES NOT TRIGGER ON FIRST LOAD
+   SH_ADD_HOOK(IServerGameDLL, Restore, gamedll, SH_STATIC(Hook_Restore), false); // THIS DOES TRIGGER ON FIRST LOAD
 }
  
 void RemoveFMODStateHooks()
 {
    SH_REMOVE_HOOK(IServerGameDLL, SaveGlobalState, gamedll, SH_STATIC(Hook_SaveGlobalState), false);
-   SH_REMOVE_HOOK(IServerGameDLL, RestoreGlobalState, gamedll, SH_STATIC(Hook_RestoreGlobalState), false);
+   SH_REMOVE_HOOK(IServerGameDLL, RestoreGlobalState, gamedll, SH_STATIC(Hook_RestoreGlobalState), false); // THIS DOES NOT TRIGGER ON FIRST LOAD
+   SH_REMOVE_HOOK(IServerGameDLL, Restore, gamedll, SH_STATIC(Hook_Restore), false); // THIS DOES TRIGGER ON FIRST LOAD
 }

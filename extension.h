@@ -137,6 +137,7 @@ public:
     char *startedFMODStudioEventPath;
     FMOD::Studio::EventInstance *createdFMODStudioEventInstance;
     bool knownFMODPausedState;
+	int restoredTimelinePosition; // The position
 
 	int StartFMODEngine();
 	
@@ -149,6 +150,8 @@ public:
     int StartFMODEvent(const char *eventPath);
 
 	int GetCurrentFMODTimelinePosition();
+
+	void SetCurrentFMODTimelinePosition(int timelinePosition);
 
     int StopFMODEvent(const char *eventPath);
 
