@@ -43,23 +43,34 @@ void SaveMusicState(const char* musicStateSaveName) {
         g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     }
     // PARAMETERS
-    FMOD_STUDIO_PARAMETER_DESCRIPTION *globalParameters = g_AdaptiveMusicExt.GetAllFMODGlobalParameters();
-    globalParametersCount = sizeof(globalParameters);
-    if (globalParameters != nullptr) {
-        for (int i = 0; i < sizeof(globalParameters); i++) {
-            // parameter (space)
-            g_AdaptiveMusicExt.filesystem->Write("parameter ", (strlen("parameter ")), saveFileHandle);
-            // parameter_name
-            const char* parameterName = globalParameters[i].name;
-            g_AdaptiveMusicExt.filesystem->Write(parameterName, (strlen(parameterName)), saveFileHandle); 
-            // (space)
-            g_AdaptiveMusicExt.filesystem->Write(" ", (strlen(" ")), saveFileHandle);
-            // parameter_value
-            float parameterValue = globalParameters[i].maximum;
-            std::string parameterValueString = std::to_string(parameterValue);
-            const char* parameterValueConstChar = parameterValueString.c_str();
-            g_AdaptiveMusicExt.filesystem->Write(parameterValueConstChar, (strlen(parameterValueConstChar)), saveFileHandle); 
-            g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+    FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
+    int parameterCount;
+    FMOD_RESULT result; 
+    result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+    } else {
+        for (int i = 0; i < parameterCount; i++) {
+            // Get the parameter value
+            float parameterValue;
+            FMOD_RESULT result; 
+            result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterByName(globalParameters[i].name, &parameterValue);
+            if (result != FMOD_OK) {
+                META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter value. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+            } else {
+                // parameter (space)
+                g_AdaptiveMusicExt.filesystem->Write("parameter ", (strlen("parameter ")), saveFileHandle);
+                // parameter_name
+                const char* parameterName = globalParameters[i].name;
+                g_AdaptiveMusicExt.filesystem->Write(parameterName, (strlen(parameterName)), saveFileHandle); 
+                // (space)
+                g_AdaptiveMusicExt.filesystem->Write(" ", (strlen(" ")), saveFileHandle);
+                // parameter_value
+                std::string parameterValueString = std::to_string(parameterValue);
+                const char* parameterValueConstChar = parameterValueString.c_str();
+                g_AdaptiveMusicExt.filesystem->Write(parameterValueConstChar, (strlen(parameterValueConstChar)), saveFileHandle);
+                g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+            }
         }
     }
     // Close the handle
@@ -84,13 +95,59 @@ void RestoreMusicState(const char* musicStateSaveName) {
         return;
     }
     META_CONPRINTF("AdaptiveMusic Plugin - Restoring the Adaptive Music state from %s\n", saveFullPath);
-    // Read and restore the current state
+    // Read the current state
+    /*
     // BANK
-
+    g_AdaptiveMusicExt.filesystem->Write("bank ", (strlen("bank ")), saveFileHandle);
+    char* bankName = g_AdaptiveMusicExt.loadedFMODStudioBankName;
+    g_AdaptiveMusicExt.filesystem->Write(bankName, (strlen(bankName)), saveFileHandle);  
+    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     // EVENT
-
+    g_AdaptiveMusicExt.filesystem->Write("event ", (strlen("event ")), saveFileHandle);
+    char* eventPath = g_AdaptiveMusicExt.startedFMODStudioEventPath;
+    g_AdaptiveMusicExt.filesystem->Write(eventPath, (strlen(eventPath)), saveFileHandle); 
+    g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
     // TIMESTAMP
-
+    int timelinePosition = g_AdaptiveMusicExt.GetCurrentFMODTimelinePosition();
+    if (timelinePosition != -1){
+        std::string timelinePositionString = std::to_string(timelinePosition);
+        const char* timelinePositionConstChar = timelinePositionString.c_str();
+        g_AdaptiveMusicExt.filesystem->Write("timestamp ", (strlen("timestamp ")), saveFileHandle);
+        g_AdaptiveMusicExt.filesystem->Write(timelinePositionConstChar, (strlen(timelinePositionConstChar)), saveFileHandle); 
+        g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+    }
+    // PARAMETERS
+    FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
+    int parameterCount;
+    FMOD_RESULT result; 
+    result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+    } else {
+        for (int i = 0; i < parameterCount; i++) {
+            // Get the parameter value
+            float parameterValue;
+            FMOD_RESULT result; 
+            result = g_AdaptiveMusicExt.fmodStudioSystem->getParameterByName(globalParameters[i].name, &parameterValue);
+            if (result != FMOD_OK) {
+                META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter value. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+            } else {
+                // parameter (space)
+                g_AdaptiveMusicExt.filesystem->Write("parameter ", (strlen("parameter ")), saveFileHandle);
+                // parameter_name
+                const char* parameterName = globalParameters[i].name;
+                g_AdaptiveMusicExt.filesystem->Write(parameterName, (strlen(parameterName)), saveFileHandle); 
+                // (space)
+                g_AdaptiveMusicExt.filesystem->Write(" ", (strlen(" ")), saveFileHandle);
+                // parameter_value
+                std::string parameterValueString = std::to_string(parameterValue);
+                const char* parameterValueConstChar = parameterValueString.c_str();
+                g_AdaptiveMusicExt.filesystem->Write(parameterValueConstChar, (strlen(parameterValueConstChar)), saveFileHandle);
+                g_AdaptiveMusicExt.filesystem->Write("\n", 1, saveFileHandle);
+            }
+        }
+    }
+    */
     // Close the handle
     g_AdaptiveMusicExt.filesystem->Close(saveFileHandle);
 }
