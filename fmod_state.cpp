@@ -137,7 +137,6 @@ void RestoreMusicState(const char* musicStateSaveName) {
     char* saveFullPath = new char[pathPrefixLength + saveNameLength + 1];
     strcpy(saveFullPath, pathPrefix);
     strcat(saveFullPath, musicStateSaveName);
-    // When opening the file and writing to it, it gets completely wiped first, so no need to wipe it beforehand
     FileHandle_t saveFileHandle = g_AdaptiveMusicExt.filesystem->Open(saveFullPath, "r", "MOD");
     if (saveFileHandle == nullptr) {
         META_CONPRINTF("AdaptiveMusic Plugin - Failed to open save file for reading: %s", saveFullPath);
@@ -235,13 +234,58 @@ const char* replaceSavWithMusicState(const char* original) {
     return result;
 }
 
+void SyncFMODSettings() {
+    // Go through the client config file
+    const char* configFilePath = "cfg/config.cfg";
+    FileHandle_t configFileHandle = g_AdaptiveMusicExt.filesystem->Open(configFilePath, "r", "MOD");
+    if (configFileHandle == nullptr) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open config file for reading: %s\n", configFilePath);
+        return;
+    }
+    META_CONPRINTF("AdaptiveMusic Plugin - Syncing the FMOD settings from %s\n", configFilePath);
+    char buf[512];
+    g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), configFileHandle);
+    while (strcmp(buf, "") != 0) {
+        // READ THE LINE AND FILL THE TOKENS
+        char* tokens[3] = {};
+        char* token = strtok(buf, " ");
+        int i = 0;
+        while (token != nullptr) {
+            // Remove backlash-n
+            char* readPtr = token;
+            char* writePtr = token;
+            while (*readPtr != '\0') {
+                if (*readPtr != '\n') {
+                    *writePtr = *readPtr;
+                    writePtr++;
+                }
+                readPtr++;
+            }
+            *writePtr = '\0'; // Null-terminate the modified string
+            // Next token
+            tokens[i] = token;
+            token = strtok(nullptr, " ");
+            i++;
+        }
+        // Music Volume
+        if (strcmp(tokens[0], "snd_musicvolume") == 0 && tokens[1] != nullptr) {
+            // Remove quotes
+            size_t len = strlen(tokens[1]);
+            char* result = new char[len - 1];
+            strncpy(result, tokens[1] + 1, len - 2);
+            result[len - 2] = '\0';
+            float volume = atof(result);
+            g_AdaptiveMusicExt.SetFMODVolume(volume);
+        }
+        g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), configFileHandle);
+    }
+    // Close the handle
+    g_AdaptiveMusicExt.filesystem->Close(configFileHandle);
+}
+
 SH_DECL_HOOK1_void(IServerGameDLL, SaveGlobalState, SH_NOATTRIB, 0, CSaveRestoreData *);
 SH_DECL_HOOK1_void(IServerGameDLL, RestoreGlobalState, SH_NOATTRIB, 0, CSaveRestoreData *);
-// Testing
-//SH_DECL_HOOK1_void(IServerGameDLL, PreSave, SH_NOATTRIB, 0, CSaveRestoreData *);
-//SH_DECL_HOOK1_void(IServerGameDLL, Save, SH_NOATTRIB, 0, CSaveRestoreData *);
 SH_DECL_HOOK2_void(IServerGameDLL, Restore, SH_NOATTRIB, 0, CSaveRestoreData *, bool);
-//SH_DECL_HOOK2_void(IServerGameDLL, PreSaveGameLoaded, SH_NOATTRIB, 0, char const *, bool);
 
 void Hook_SaveGlobalState(CSaveRestoreData *saveRestoreData)
 {

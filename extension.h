@@ -161,6 +161,8 @@ public:
 
     int SetFMODPausedState(bool pausedState);
 
+	int SetFMODVolume(float volume);
+
 #endif
 };
 

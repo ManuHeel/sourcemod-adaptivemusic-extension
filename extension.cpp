@@ -188,6 +188,7 @@ int AdaptiveMusicExt::StartFMODEngine() {
                        FMOD_ErrorString(result));
         return (result);
     }
+    SyncFMODSettings(); // Sync the settings, volume etc
     META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine successfully started\n");
     return (0);
 }
@@ -463,6 +464,33 @@ int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
         return (-1);
     }
     knownFMODPausedState = pausedState;
+    // When leaving the paused state, it's a good measure to sync the settings, volume etc, to take into account the potential modifications made
+    if (!pausedState) {
+        SyncFMODSettings();
+    }
+    return (0);
+}
+
+/**
+ * Set the master bus volume
+ * @param volume the desired volume from 0.0 to 1.0
+ * @return The error code (or 0 if no error was encountered)
+ */
+int AdaptiveMusicExt::SetFMODVolume(float volume) {
+    META_CONPRINTF("AdaptiveMusic Plugin - Setting the FMOD volume to %f\n", volume);
+    FMOD::Studio::Bus *bus;
+    FMOD_RESULT result;
+    result = fmodStudioSystem->getBus("bus:/", &bus);
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return (-1);
+    }
+    result = bus->setVolume(volume);
+    fmodStudioSystem->update();
+    if (result != FMOD_OK) {
+        META_CONPRINTF("AdaptiveMusic Plugin - Could not set the FMOD master bus volume! (%d) %s\n", result, FMOD_ErrorString(result));
+        return (-1);
+    }
     return (0);
 }
 
