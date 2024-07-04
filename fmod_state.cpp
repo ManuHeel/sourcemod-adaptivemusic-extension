@@ -139,7 +139,7 @@ void RestoreMusicState(const char* musicStateSaveName) {
     strcat(saveFullPath, musicStateSaveName);
     FileHandle_t saveFileHandle = g_AdaptiveMusicExt.filesystem->Open(saveFullPath, "r", "MOD");
     if (saveFileHandle == nullptr) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open save file for reading: %s", saveFullPath);
+        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open save file for reading: %s\n", saveFullPath);
         return;
     }
     META_CONPRINTF("AdaptiveMusic Plugin - Restoring the Adaptive Music state from %s\n", saveFullPath);
@@ -236,46 +236,35 @@ const char* replaceSavWithMusicState(const char* original) {
 
 void SyncFMODSettings() {
     // Go through the client config file
-    const char* configFilePath = "cfg/config.cfg";
-    FileHandle_t configFileHandle = g_AdaptiveMusicExt.filesystem->Open(configFilePath, "r", "MOD");
+    std::string configFilePath = "cfg/config.cfg";
+    FileHandle_t configFileHandle = g_AdaptiveMusicExt.filesystem->Open(configFilePath.c_str(), "r", "MOD");
     if (configFileHandle == nullptr) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open config file for reading: %s\n", configFilePath);
+        META_CONPRINTF("AdaptiveMusic Plugin - Failed to open config file for reading: %s\n", configFilePath.c_str());
         return;
     }
-    META_CONPRINTF("AdaptiveMusic Plugin - Syncing the FMOD settings from %s\n", configFilePath);
+    META_CONPRINTF("AdaptiveMusic Plugin - Syncing the FMOD settings from %s\n", configFilePath.c_str());
     char buf[512];
     g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), configFileHandle);
-    while (strcmp(buf, "") != 0) {
+    while (std::strcmp(buf, "") != 0) {
         // READ THE LINE AND FILL THE TOKENS
-        char* tokens[3] = {};
-        char* token = strtok(buf, " ");
-        int i = 0;
+        std::vector<std::string> tokens;
+        char* token = std::strtok(buf, " ");
         while (token != nullptr) {
+            std::string tokenStr = token;
             // Remove backlash-n
-            char* readPtr = token;
-            char* writePtr = token;
-            while (*readPtr != '\0') {
-                if (*readPtr != '\n') {
-                    *writePtr = *readPtr;
-                    writePtr++;
-                }
-                readPtr++;
-            }
-            *writePtr = '\0'; // Null-terminate the modified string
+            tokenStr.erase(std::remove(tokenStr.begin(), tokenStr.end(), '\n'), tokenStr.end());
             // Next token
-            tokens[i] = token;
-            token = strtok(nullptr, " ");
-            i++;
+            tokens.push_back(tokenStr);
+            token = std::strtok(nullptr, " ");
         }
         // Music Volume
-        if (strcmp(tokens[0], "snd_musicvolume") == 0 && tokens[1] != nullptr) {
+        if (tokens.size() > 1 && tokens[0] == "snd_musicvolume") {
             // Remove quotes
-            size_t len = strlen(tokens[1]);
-            char* result = new char[len - 1];
-            strncpy(result, tokens[1] + 1, len - 2);
-            result[len - 2] = '\0';
-            float volume = atof(result);
-            g_AdaptiveMusicExt.SetFMODVolume(volume);
+            if (tokens[1].size() > 2) {
+                std::string result = tokens[1].substr(1, tokens[1].size() - 2);
+                float volume = std::stof(result);
+                g_AdaptiveMusicExt.SetFMODVolume(volume);
+            }
         }
         g_AdaptiveMusicExt.filesystem->ReadLine(buf, sizeof(buf), configFileHandle);
     }
