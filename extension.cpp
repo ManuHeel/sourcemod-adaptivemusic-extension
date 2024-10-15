@@ -1,7 +1,7 @@
 /**
  * vim: set ts=4 :
  * =============================================================================
- * SourceMod Adaptive Music Extension
+ * SourceMod AMM Extension
  * Copyright (C) 2004-2008 AlliedModders LLC.  All rights reserved.
  * =============================================================================
  *
@@ -58,8 +58,9 @@ cell_t LoadFMODBank(IPluginContext *pContext, const cell_t *params)
 {
 	char *bankName;
 
-	pContext->LocalToString(params[1], &bankName);
-	return g_AdaptiveMusicExt.LoadFMODBank(bankName);
+    pContext->LocalToString(params[1], &bankName);
+    std::string bankNameStr(bankName);
+    return g_AdaptiveMusicExt.LoadFMODBank(bankNameStr);
 }
 
 /**
@@ -67,9 +68,10 @@ cell_t LoadFMODBank(IPluginContext *pContext, const cell_t *params)
  */
 cell_t StartFMODEvent(IPluginContext *pContext, const cell_t *params)
 {
-	char *eventPath;
-	pContext->LocalToString(params[1], &eventPath);
-	return g_AdaptiveMusicExt.StartFMODEvent(eventPath);
+    char *eventPath;
+    pContext->LocalToString(params[1], &eventPath);
+    std::string eventPathStr(eventPath);
+    return g_AdaptiveMusicExt.StartFMODEvent(eventPathStr);
 }
 
 /**
@@ -77,9 +79,10 @@ cell_t StartFMODEvent(IPluginContext *pContext, const cell_t *params)
  */
 cell_t StopFMODEvent(IPluginContext *pContext, const cell_t *params)
 {
-	char *eventPath;
-	pContext->LocalToString(params[1], &eventPath);
-	return g_AdaptiveMusicExt.StopFMODEvent(eventPath);
+    char *eventPath;
+    pContext->LocalToString(params[1], &eventPath);
+    std::string eventPathStr(eventPath);
+    return g_AdaptiveMusicExt.StopFMODEvent(eventPathStr);
 }
 
 /**
@@ -87,10 +90,11 @@ cell_t StopFMODEvent(IPluginContext *pContext, const cell_t *params)
  */
 cell_t SetFMODGlobalParameter(IPluginContext *pContext, const cell_t *params)
 {
-	char *parameterName;
-	pContext->LocalToString(params[1], &parameterName);
+    char *parameterName;
+    pContext->LocalToString(params[1], &parameterName);
+    std::string parameterNameStr(parameterName);
     float value = sp_ctof(params[2]);
-	return g_AdaptiveMusicExt.SetFMODGlobalParameter(parameterName, value);
+    return g_AdaptiveMusicExt.SetFMODGlobalParameter(parameterNameStr, value);
 }
 
 /**
@@ -99,7 +103,7 @@ cell_t SetFMODGlobalParameter(IPluginContext *pContext, const cell_t *params)
 cell_t SetFMODPausedState(IPluginContext *pContext, const cell_t *params)
 {
     int pausedState = params[1];
-	return g_AdaptiveMusicExt.SetFMODPausedState(pausedState);
+    return g_AdaptiveMusicExt.SetFMODPausedState(pausedState);
 }
 
 /**
@@ -107,12 +111,12 @@ cell_t SetFMODPausedState(IPluginContext *pContext, const cell_t *params)
  */
 const sp_nativeinfo_t MyNatives[] = 
 {
-	{"LoadFMODBank", LoadFMODBank},
-	{"StartFMODEvent", StartFMODEvent},
-	{"StopFMODEvent", StopFMODEvent},
-	{"SetFMODGlobalParameter", SetFMODGlobalParameter},
-	{"SetFMODPausedState", SetFMODPausedState},
-	{NULL, NULL},
+    {"LoadFMODBank", LoadFMODBank},
+    {"StartFMODEvent", StartFMODEvent},
+    {"StopFMODEvent", StopFMODEvent},
+    {"SetFMODGlobalParameter", SetFMODGlobalParameter},
+    {"SetFMODPausedState", SetFMODPausedState},
+    {NULL, NULL},
 };
 
 // -----------------------
@@ -120,7 +124,7 @@ const sp_nativeinfo_t MyNatives[] =
 // -----------------------
 
 bool AdaptiveMusicExt::SDK_OnLoad(char *error, size_t maxlen, bool late) {
-    smutils->LogMessage(myself, "Adaptive Music Extension - SDK Loaded");
+    smutils->LogMessage(myself, "AMM Extension - SDK Loaded");
     StartFMODEngine();
     restoredTimelinePosition = 0;
     return true;
@@ -131,11 +135,11 @@ void AdaptiveMusicExt::SDK_OnAllLoaded() {
 }
 
 void AdaptiveMusicExt::SDK_OnUnload() {
-    smutils->LogMessage(myself, "Adaptive Music Extension - SDK Unloaded");
+    smutils->LogMessage(myself, "AMM Extension - SDK Unloaded");
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxlen, bool late) {
-    META_CONPRINTF("Adaptive Music Extension - MetaMod Loaded \n");
+    META_CONPRINTF("AMM Extension - MetaMod Loaded \n");
     CreateInterfaceFn fileSystemFactory = ismm->GetFileSystemFactory();
     GET_V_IFACE_CURRENT(GetEngineFactory, filesystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);  
     AddFMODStateHooks();
@@ -143,7 +147,7 @@ bool AdaptiveMusicExt::SDK_OnMetamodLoad(ISmmAPI *ismm, char *error, size_t maxl
 }
 
 bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
-    META_CONPRINTF("Adaptive Music Extension - MetaMod Unloaded \n");
+    META_CONPRINTF("AMM Extension - MetaMod Unloaded \n");
     RemoveFMODStateHooks();
     return true;
 }
@@ -152,22 +156,18 @@ bool AdaptiveMusicExt::SDK_OnMetamodUnload(char *error, size_t maxlen) {
 // FMOD FUNCTIONS
 // --------------
 
+
 /**
  * Helper method to sanitize the name of an FMOD Bank, adding ".bank" if it's not already present
  * @param bankName The FMOD Bank name to sanitize
  * @return The sanitized Bank name (same as the initial if it was already ending with ".bank")
  */
-const char *SanitizeBankName(const char *bankName) {
-    const char *bankExtension = ".bank";
-    size_t bankNameLength = strlen(bankName);
-    size_t bankExtensionLength = strlen(bankExtension);
-    if (bankNameLength >= bankExtensionLength && strcmp(bankName + bankNameLength - bankExtensionLength, bankExtension) == 0) {
+std::string SanitizeBankName(const std::string &bankName) {
+    const std::string bankExtension = ".bank";
+    if (bankName.size() >= bankExtension.size() && bankName.compare(bankName.size() - bankExtension.size(), bankExtension.size(), bankExtension) == 0) {
         return bankName;
     }
-    char* sanitizedBankName = new char[bankNameLength + bankExtensionLength + 1];
-    strcpy(sanitizedBankName, bankName);
-    strcat(sanitizedBankName, bankExtension);
-    return (sanitizedBankName);
+    return bankName + bankExtension;
 }
 
 /**
@@ -178,18 +178,18 @@ int AdaptiveMusicExt::StartFMODEngine() {
     FMOD_RESULT result;
     result = FMOD::Studio::System::create(&fmodStudioSystem);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not be created (%d): %s\n", result,
+        META_CONPRINTF("AMM Extension - FMOD engine could not be created (%d): %s\n", result,
                        FMOD_ErrorString(result));
         return (result);
     }
     result = fmodStudioSystem->initialize(512, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, nullptr);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not initialize (%d): %s\n", result,
+        META_CONPRINTF("AMM Extension - FMOD engine could not initialize (%d): %s\n", result,
                        FMOD_ErrorString(result));
         return (result);
     }
     SyncFMODSettings(); // Sync the settings, volume etc
-    META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine successfully started\n");
+    META_CONPRINTF("AMM Extension - FMOD engine successfully started\n");
     return (0);
 }
 
@@ -201,11 +201,11 @@ int AdaptiveMusicExt::StopFMODEngine() {
     FMOD_RESULT result;
     result = fmodStudioSystem->release();
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine could not be released (%d): %s\n", result,
+        META_CONPRINTF("AMM Extension - FMOD engine could not be released (%d): %s\n", result,
                        FMOD_ErrorString(result));
         return (result);
     }
-    META_CONPRINTF("AdaptiveMusic Plugin - FMOD engine successfully stopped\n");
+    META_CONPRINTF("AMM Extension - FMOD engine successfully stopped\n");
     return (0);
 }
 
@@ -214,22 +214,13 @@ int AdaptiveMusicExt::StopFMODEngine() {
  * @param bankName The FMOD Bank name to locate
  * @return The FMOD Bank's full path from the file system
  */
-const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
-    const char *sanitizedBankName = SanitizeBankName(bankName);
-    const char *baseDir = g_SMAPI->GetBaseDir();
-    const char *banksSubPath = "/sound/fmod/banks/";
-    size_t sanitizedBankNameLength = strlen(sanitizedBankName);
-    size_t baseDirLength = strlen(baseDir);
-    size_t banksSubPathLength = strlen(banksSubPath);
-    char* bankPath = new char[sanitizedBankNameLength + baseDirLength + banksSubPathLength + 1];
-    strcpy(bankPath, baseDir);
-    strcat(bankPath, banksSubPath);
-    strcat(bankPath, sanitizedBankName);
-    // convert backwards slashes to forward slashes
-    for (int i = 0; i < strlen(bankPath) ; i++) {
-        if (bankPath[i] == '\\')
-            bankPath[i] = '/';
-    }
+std::string AdaptiveMusicExt::GetFMODBankPath(const std::string &bankName) {
+    std::string sanitizedBankName = SanitizeBankName(bankName);
+    std::string baseDir = g_SMAPI->GetBaseDir();
+    std::string banksSubPath = "/sound/fmod/banks/";
+    std::string bankPath = baseDir + banksSubPath + sanitizedBankName;
+    // convert backward slashes to forward slashes
+    std::replace(bankPath.begin(), bankPath.end(), '\\', '/');
     return bankPath;
 }
 
@@ -238,41 +229,28 @@ const char * AdaptiveMusicExt::GetFMODBankPath(const char *bankName) {
  * @param bankName The name of the FMOD Bank to load
  * @return The error code (or 0 if no error was encountered)
  */
-int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
-    if (loadedFMODStudioBankName != nullptr && (strcmp(bankName, loadedFMODStudioBankName) == 0)) {
+int AdaptiveMusicExt::LoadFMODBank(const std::string &bankName) {
+    if (loadedFMODStudioBankName == bankName) {
         // Bank is already loaded
-        META_CONPRINTF("AdaptiveMusic Plugin - FMOD bank requested for loading but already loaded: %s\n", bankName);
+        META_CONPRINTF("AMM Extension - FMOD bank requested for loading but already loaded: %s\n", bankName.c_str());
     } else {
         // Load the requested bank
-        const char *bankPath = GetFMODBankPath(bankName);
+        std::string bankPath = GetFMODBankPath(bankName);
         FMOD_RESULT result;
-        result = fmodStudioSystem->loadBankFile(bankPath, FMOD_STUDIO_LOAD_BANK_NORMAL,
-                                                &loadedFMODStudioBank);
+        result = fmodStudioSystem->loadBankFile(bankPath.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &loadedFMODStudioBank);
         if (result != FMOD_OK) {
-            META_CONPRINTF("AdaptiveMusic Plugin - Could not load FMOD bank: %s. Error (%d): %s\n", bankName, result,
-                           FMOD_ErrorString(result));
+            META_CONPRINTF("AMM Extension - Could not load FMOD bank: %s. Error (%d): %s\n", bankName.c_str(), result, FMOD_ErrorString(result));
             return (-1);
         }
-        const char *bankStringsSuffix = ".strings";
-        size_t bankNameLength = strlen(bankName);
-        size_t bankStringsSuffixLength = strlen(bankStringsSuffix);
-        char* bankStringsName = new char[bankNameLength + bankStringsSuffixLength + 1];
-        strcpy(bankStringsName, bankName);
-        strcat(bankStringsName, bankStringsSuffix);
-        const char *bankStringsPath = GetFMODBankPath(bankStringsName);
-        result = fmodStudioSystem->loadBankFile(bankStringsPath,
-                                                FMOD_STUDIO_LOAD_BANK_NORMAL,
-                                                &loadedFMODStudioStringsBank);
+        std::string bankStringsName = bankName + ".strings";
+        std::string bankStringsPath = GetFMODBankPath(bankStringsName);
+        result = fmodStudioSystem->loadBankFile(bankStringsPath.c_str(), FMOD_STUDIO_LOAD_BANK_NORMAL, &loadedFMODStudioStringsBank);
         if (result != FMOD_OK) {
-            META_CONPRINTF("AdaptiveMusic Plugin - Could not load FMOD bank: %s. Error (%d): %\n", bankStringsName,
-                           result,
-                           FMOD_ErrorString(result));
+            META_CONPRINTF("AMM Extension - Could not load FMOD bank: %s. Error (%d): %\n", bankStringsName.c_str(), result, FMOD_ErrorString(result));
             return (-1);
         }
-        META_CONPRINTF("AdaptiveMusic Plugin - Bank successfully loaded: %s\n", bankName);
-        delete[] loadedFMODStudioBankName;
-        loadedFMODStudioBankName = new char[strlen(bankName) + 1];
-        strcpy(loadedFMODStudioBankName, bankName);
+        META_CONPRINTF("AMM Extension - Bank successfully loaded: %s\n", bankName.c_str());
+        loadedFMODStudioBankName = bankName;
     }
     return (0);
 }
@@ -282,10 +260,10 @@ int AdaptiveMusicExt::LoadFMODBank(const char *bankName) {
  * @param eventPath The name of the FMOD Event to start
  * @return The error code (or 0 if no error was encountered)
  */
-int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
-    if (startedFMODStudioEventPath != nullptr && (strcmp(eventPath, startedFMODStudioEventPath) == 0)) {
+int AdaptiveMusicExt::StartFMODEvent(const std::string& eventPath) {
+    if (!startedFMODStudioEventPath.empty() && (eventPath == startedFMODStudioEventPath)) {
         // Event is already loaded
-        META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath);
+        META_CONPRINTF("AdaptiveMusic Plugin - Event requested for starting but already started (%s)\n", eventPath.c_str());
         // However, if there's a restored timeline position from a save file, use it as we may be reloading from the same map (autosave, etc)
         if (restoredTimelinePosition != 0) {
             createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
@@ -297,19 +275,17 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
         }
     } else {
         // Event is new
-        if (startedFMODStudioEventPath != nullptr && (strcmp(startedFMODStudioEventPath, "") != 0)) {
+        if (!startedFMODStudioEventPath.empty()) {
             // Stop the currently playing event
             StopFMODEvent(startedFMODStudioEventPath);
         }
-        const char *eventPathPrefix = "event:/";
-        size_t eventPathLength = strlen(eventPath);
-        size_t eventPathPrefixLength = strlen(eventPathPrefix);
-        char* fullEventPath = new char[eventPathLength + eventPathPrefixLength + 1];
-        strcpy(fullEventPath, eventPathPrefix);
-        strcat(fullEventPath, eventPath);
+
+        const std::string eventPathPrefix = "event:/";
+        std::string fullEventPath = eventPathPrefix + eventPath;
         FMOD_RESULT result;
-        result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
+        result = fmodStudioSystem->getEvent(fullEventPath.c_str(), &startedFMODStudioEventDescription);
         result = startedFMODStudioEventDescription->createInstance(&createdFMODStudioEventInstance);
+        
         // If there's a restored timeline position from a save file, use it
         if (restoredTimelinePosition != 0) {
             createdFMODStudioEventInstance->stop(FMOD_STUDIO_STOP_IMMEDIATE);
@@ -317,17 +293,18 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
             createdFMODStudioEventInstance->setTimelinePosition(restoredTimelinePosition);
             restoredTimelinePosition = 0;
         }
+        
         result = createdFMODStudioEventInstance->start();
         fmodStudioSystem->update();
+        
         if (result != FMOD_OK) {
-            META_CONPRINTF("AdaptiveMusic Plugin - Could not start Event (%s). Error: (%d) %s\n", eventPath, result,
+            META_CONPRINTF("AdaptiveMusic Plugin - Could not start Event (%s). Error: (%d) %s\n", eventPath.c_str(), result,
                            FMOD_ErrorString(result));
             return (-1);
         }
-        META_CONPRINTF("AdaptiveMusic Plugin - Event successfully started (%s)\n", eventPath);
-        delete[] startedFMODStudioEventPath;
-        startedFMODStudioEventPath = new char[strlen(eventPath) + 1];
-        strcpy(startedFMODStudioEventPath, eventPath);
+        
+        META_CONPRINTF("AdaptiveMusic Plugin - Event successfully started (%s)\n", eventPath.c_str());
+        startedFMODStudioEventPath = eventPath; // Assign directly, no need for new char array
     }
     return (0);
 }
@@ -338,14 +315,14 @@ int AdaptiveMusicExt::StartFMODEvent(const char *eventPath) {
  */
 int AdaptiveMusicExt::GetCurrentFMODTimelinePosition() {
     if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Asking for the current event instance timeline position but no event is running");
+        META_CONPRINTF("AMM Extension - Asking for the current event instance timeline position but no event is running\n");
         return -1;
     }
     FMOD_RESULT result;
     int timelinePosition;
     result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->getTimelinePosition(&timelinePosition);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+        META_CONPRINTF("AMM Extension - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
         return -1;
     } else {
         return timelinePosition;
@@ -358,12 +335,12 @@ int AdaptiveMusicExt::GetCurrentFMODTimelinePosition() {
 void AdaptiveMusicExt::SetCurrentFMODTimelinePosition(int timelinePosition) {
     /*
     if (g_AdaptiveMusicExt.createdFMODStudioEventInstance == nullptr) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Asking to update the current event instance timeline position but no event is running");
+        META_CONPRINTF("AMM Extension - Asking to update the current event instance timeline position but \n");
     }
     FMOD_RESULT result;
     result = g_AdaptiveMusicExt.createdFMODStudioEventInstance->setTimelinePosition(timelinePosition);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
+        META_CONPRINTF("AMM Extension - Could not find the timeline position from the event %s. Error: (%d) %s\n", g_AdaptiveMusicExt.startedFMODStudioEventPath, result, FMOD_ErrorString(result));
     }
     */
     // ONLY SET THE VARIABLE
@@ -375,27 +352,20 @@ void AdaptiveMusicExt::SetCurrentFMODTimelinePosition(int timelinePosition) {
  * @param eventPath The name of the FMOD Event to stop
  * @return The error code (or 0 if no error was encountered)
  */
-int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
-    const char *eventPathPrefix = "event:/";
-    size_t eventPathLength = strlen(eventPath);
-    size_t eventPathPrefixLength = strlen(eventPathPrefix);
-    char* fullEventPath = new char[eventPathLength + eventPathPrefixLength + 1];
-    strcpy(fullEventPath, eventPathPrefix);
-    strcat(fullEventPath, eventPath);
+int AdaptiveMusicExt::StopFMODEvent(const std::string &eventPath) {
+    std::string eventPathPrefix = "event:/";
+    std::string fullEventPath = eventPathPrefix + eventPath; // Concatenate the prefix and event path
     FMOD_RESULT result;
-    result = fmodStudioSystem->getEvent(fullEventPath, &startedFMODStudioEventDescription);
+    result = fmodStudioSystem->getEvent(fullEventPath.c_str(), &startedFMODStudioEventDescription);
     result = startedFMODStudioEventDescription->releaseAllInstances();
     fmodStudioSystem->update();
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not stop Event (%s). Error: (%d) %s\n", eventPath, result,
-                       FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not stop Event (%s). Error: (%d) %s\n", eventPath.c_str(), result, FMOD_ErrorString(result));
+        return -1;
     }
-    META_CONPRINTF("AdaptiveMusic Plugin - Event successfully stopped (%s)\n", eventPath);
-    delete[] startedFMODStudioEventPath;
-    startedFMODStudioEventPath = new char[strlen("") + 1];
-    strcpy(startedFMODStudioEventPath, "");
-    return (0);
+    META_CONPRINTF("AMM Extension - Event successfully stopped (%s)\n", eventPath.c_str());
+    startedFMODStudioEventPath.clear();
+    return 0;
 }
 
 /**
@@ -404,42 +374,35 @@ int AdaptiveMusicExt::StopFMODEvent(const char *eventPath) {
  * @param value The value to set the FMOD Parameter to
  * @return The error code (or 0 if no error was encountered)
  */
-int AdaptiveMusicExt::SetFMODGlobalParameter(const char *parameterName, float value) {
+int AdaptiveMusicExt::SetFMODGlobalParameter(const std::string &parameterName, float value) {
     FMOD_RESULT result;
-    result = fmodStudioSystem->setParameterByName(parameterName, value);
+    result = fmodStudioSystem->setParameterByName(parameterName.c_str(), value);
     fmodStudioSystem->update();
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not set Global Parameter value (%s) (%f). Error: (%d) %s\n",
-                       parameterName, value,
-                       result, FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not set Global Parameter value (%s) (%f). Error: (%d) %s\n",
+                       parameterName.c_str(), value, result, FMOD_ErrorString(result));
+        return -1;
     }
-    META_CONPRINTF("AdaptiveMusic Plugin - Global Parameter %s set to %f\n", parameterName, value);
-    return (0);
+    META_CONPRINTF("AMM Extension - Global Parameter %s set to %f\n", parameterName.c_str(), value);
+    return 0;
 }
 
 /**
  * Get all the parameters registered in the bank
  * @return An array of all parameters registered in the bank
  */
-FMOD_STUDIO_PARAMETER_DESCRIPTION *AdaptiveMusicExt::GetAllFMODGlobalParameters(){
-    FMOD_RESULT result; 
+std::vector<FMOD_STUDIO_PARAMETER_DESCRIPTION> AdaptiveMusicExt::GetAllFMODGlobalParameters() {
+    FMOD_RESULT result;
     FMOD_STUDIO_PARAMETER_DESCRIPTION globalParameters[128];
     int parameterCount;
     result = fmodStudioSystem->getParameterDescriptionList(globalParameters, sizeof(globalParameters), &parameterCount);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
-        return nullptr;
+        META_CONPRINTF("AMM Extension - Could not get the Global Parameter count. Error: (%d) %s\n", result, FMOD_ErrorString(result));
+        return {}; // Return an empty vector in case of error
     } else {
-        // Strip the array of the empty cells
-        // Allocate memory for the new array
-        FMOD_STUDIO_PARAMETER_DESCRIPTION* limitedGlobalParameters = new FMOD_STUDIO_PARAMETER_DESCRIPTION[parameterCount];
-        // Copy the elements from globalParameters to newArray
-        for (int i = 0; i < parameterCount; i++) {
-            limitedGlobalParameters[i] = globalParameters[i];
-        }
-        // Return the new array
-        return limitedGlobalParameters;
+        // Create a vector to hold the parameters
+        std::vector<FMOD_STUDIO_PARAMETER_DESCRIPTION> limitedGlobalParameters(globalParameters, globalParameters + parameterCount);
+        return limitedGlobalParameters; // Return the vector
     }
 }
 
@@ -449,26 +412,27 @@ FMOD_STUDIO_PARAMETER_DESCRIPTION *AdaptiveMusicExt::GetAllFMODGlobalParameters(
  * @return The error code (or 0 if no error was encountered)
  */
 int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
-    META_CONPRINTF("AdaptiveMusic Plugin - Setting the FMOD master bus paused state to %d\n", pausedState);
-    FMOD::Studio::Bus *bus;
+    META_CONPRINTF("AMM Extension - Setting the FMOD master bus paused state to %d\n", pausedState);
+    FMOD::Studio::Bus *bus = nullptr; // Initialize bus pointer to nullptr
     FMOD_RESULT result;
     result = fmodStudioSystem->getBus("bus:/", &bus);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return -1;
     }
     result = bus->setPaused(pausedState);
     fmodStudioSystem->update();
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not pause the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not pause the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return -1;
     }
     knownFMODPausedState = pausedState;
     // When leaving the paused state, it's a good measure to sync the settings, volume etc, to take into account the potential modifications made
     if (!pausedState) {
         SyncFMODSettings();
     }
-    return (0);
+
+    return 0;
 }
 
 /**
@@ -477,21 +441,22 @@ int AdaptiveMusicExt::SetFMODPausedState(bool pausedState) {
  * @return The error code (or 0 if no error was encountered)
  */
 int AdaptiveMusicExt::SetFMODVolume(float volume) {
-    META_CONPRINTF("AdaptiveMusic Plugin - Setting the FMOD volume to %f\n", volume);
-    FMOD::Studio::Bus *bus;
+    META_CONPRINTF("AMM Extension - Setting the FMOD volume to %f\n", volume);
+    FMOD::Studio::Bus *bus = nullptr; // Initialize bus pointer to nullptr
     FMOD_RESULT result;
     result = fmodStudioSystem->getBus("bus:/", &bus);
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not find the FMOD master bus! (%d) %s\n", result, FMOD_ErrorString(result));
+        return -1;
     }
     result = bus->setVolume(volume);
     fmodStudioSystem->update();
     if (result != FMOD_OK) {
-        META_CONPRINTF("AdaptiveMusic Plugin - Could not set the FMOD master bus volume! (%d) %s\n", result, FMOD_ErrorString(result));
-        return (-1);
+        META_CONPRINTF("AMM Extension - Could not set the FMOD master bus volume! (%d) %s\n", result, FMOD_ErrorString(result));
+        return -1;
     }
-    return (0);
+
+    return 0;
 }
 
 SMEXT_LINK(&g_AdaptiveMusicExt);
