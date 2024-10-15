@@ -131,10 +131,10 @@ public:
     // FMOD global variables
     FMOD::Studio::System *fmodStudioSystem;
     FMOD::Studio::Bank *loadedFMODStudioBank;
-    char *loadedFMODStudioBankName;
+    std::string loadedFMODStudioBankName;
     FMOD::Studio::Bank *loadedFMODStudioStringsBank;
     FMOD::Studio::EventDescription *startedFMODStudioEventDescription;
-    char *startedFMODStudioEventPath;
+    std::string startedFMODStudioEventPath;
     FMOD::Studio::EventInstance *createdFMODStudioEventInstance;
     bool knownFMODPausedState;
 	int restoredTimelinePosition; // The position
@@ -143,21 +143,21 @@ public:
 	
 	int StopFMODEngine();
 
-    const char *GetFMODBankPath(const char *bankName);
+    std::string GetFMODBankPath(const std::string &bankName);
 
-    int LoadFMODBank(const char *bankName);
+    int LoadFMODBank(const std::string &bankName);
 	
-    int StartFMODEvent(const char *eventPath);
+    int StartFMODEvent(const std::string &eventPath);
 
 	int GetCurrentFMODTimelinePosition();
 
 	void SetCurrentFMODTimelinePosition(int timelinePosition);
 
-    int StopFMODEvent(const char *eventPath);
+    int StopFMODEvent(const std::string &eventPath);
 
-    int SetFMODGlobalParameter(const char *parameterName, float value);
+    int SetFMODGlobalParameter(const std::string &parameterName, float value);
 
-	FMOD_STUDIO_PARAMETER_DESCRIPTION *GetAllFMODGlobalParameters();
+	std::vector<FMOD_STUDIO_PARAMETER_DESCRIPTION> AdaptiveMusicExt::GetAllFMODGlobalParameters();
 
     int SetFMODPausedState(bool pausedState);
 
